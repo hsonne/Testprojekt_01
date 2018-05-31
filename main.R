@@ -1,9 +1,9 @@
 install.packages(c("fs", "tidyr", "dplyr", "stringr", "readxl", "devtools", 
-                   "crayon"))
+                   "crayon", "data.table"))
 devtools::install_github("kwb-r/kwb.utils")
                  
 
-source(file = "R/convert_xlsx_as_xls.R")
+source(file = "R/convert_xls_as_xlsx.R")
 source(file = "R/copy_xlsx_files.R")
 source(file = "R/read_bwb_data.R")
 
