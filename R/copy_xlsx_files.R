@@ -1,41 +1,29 @@
 library(fs)
 
-copy_xlsx_files <- function(input_dir,
-                            export_dir, 
-                            overwrite = FALSE,
-                            recursive = TRUE,
-                            file_pattern = "[xX][lL][sS][xX]") {
+copy_xlsx_files <- function(
+  from_dir, to_dir, overwrite = FALSE, recursive = TRUE,
+  file_pattern = "[xX][lL][sS][xX]"
+)
+{
+  from_dir <- normalizePath(from_dir)
   
-  
-  input_dir <- normalizePath(input_dir)
-  
-  export_dir <- normalizePath(export_dir)
-  
-  
-  xlsx_import_paths <- normalizePath(dir(path = input_dir, 
-                                         pattern =  file_pattern, 
-                                         recursive = TRUE, 
-                                         full.names = TRUE))
-  
-  
-  xlsx_export_paths <- gsub(pattern = input_dir, 
-                            replacement = export_dir, 
-                            x = xlsx_import_paths ,
-                            fixed = TRUE)
-  
-  
-  fs::dir_create(path = normalizePath(dirname(xlsx_import_paths)),
-                 recursive = TRUE) 
-  
-  
-  for(file_index in seq_along(xlsx_import_paths)) {
-    cat(sprintf("Copying file (%d/%d):\nFROM: %s\nTO: %s\n", 
-                file_index,
-                length(xlsx_import_paths),
-                xlsx_import_paths[file_index],
-                xlsx_export_paths[file_index]))
-    fs::file_copy(path = xlsx_import_paths[file_index],
-                  new_path = xlsx_export_paths[file_index],
-                  overwrite = overwrite) 
+  to_dir <- normalizePath(to_dir)
+
+  from_paths <- normalizePath(dir(
+    from_dir, file_pattern, recursive = TRUE, full.names = TRUE
+  ))
+
+  to_paths <- gsub(from_dir, to_dir, from_paths, fixed = TRUE)
+
+  fs::dir_create(normalizePath(dirname(from_paths)), recursive = TRUE)
+
+  for (i in seq_along(from_paths)) {
+    
+    cat(sprintf(
+      "\nCopying file (%d/%d):\nFROM: %s\nTO  : %s\n", 
+      i, length(from_paths), from_paths[i], to_paths[i]
+    ))
+    
+    fs::file_copy(from_paths[i], to_paths[i], overwrite = overwrite)
   }
 }

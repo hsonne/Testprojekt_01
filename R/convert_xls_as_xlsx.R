@@ -6,7 +6,7 @@ get_excelcnv_exe <- function(office_folder = safe_office_folder())
 {
   x <- office_folder
   
-  paths <- list.files(x, "excelcnv.exe", recursive = TRUE, full.names = TRUE)
+  paths <- list.files(x, "excelcnv\\.exe$", recursive = TRUE, full.names = TRUE)
   
   if ((n <- length(paths)) == 0) {
     
@@ -18,10 +18,11 @@ get_excelcnv_exe <- function(office_folder = safe_office_folder())
     # Sort (in case of multiple executables newest is at index 1)
     paths <- sort(paths, decreasing = TRUE)
     
-    cat(
-      "Found", n, "versions of 'excelcnv.exe':\n ", 
-      kwb.utils::collapsed(paths, "\n "), "\nUsing the latest one:", paths[1]
-    )
+    cat(paste0(
+      "\nFound ", n, " versions of 'excelcnv.exe':\n  ", 
+      kwb.utils::collapsed(paths, "\n  "), 
+      "\n\nUsing the latest one:\n  ", paths[1], "\n\n"
+    ))
   }
   
   paths[1]
@@ -48,7 +49,7 @@ delete_registry <- function(office_folder = safe_office_folder(), dbg = TRUE)
     office = "HKEY_CURRENT_USER\\Software\\Microsoft\\Office",
     reg_entry = "<office>\\<version>.0\\Excel\\Resiliency\\StartupItems",
     command = "reg delete <reg_entry> /f",
-    debug = "Deleting registry entry:\n<command>",
+    debug = "\nDeleting registry entry:\n<command>\n",
     version = stringr::str_extract(parent_folder, pattern = "[1][0-9]")
   ))
   
@@ -87,7 +88,7 @@ convert_xls_as_xlsx <- function(
     command <- sprintf('"%s" -oice "%s" "%s"', exe, xls_files[i], xlsx_files[i])
     
     kwb.utils::catIf(dbg, sprintf(
-      "Converting xls to xlsx (%d/%d):\n%s", i, length(xls_files), command
+      "\nConverting xls to xlsx (%d/%d):\n%s\n", i, length(xls_files), command
     ))
 
     system(command)
