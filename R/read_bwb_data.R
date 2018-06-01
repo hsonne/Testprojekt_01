@@ -13,34 +13,108 @@ get_SiteID <- function(string,
 }
 
 
-read_bwb_data <- function(xlsx_file, 
-                          skip = 2,
-                          pattern_gather_ignore = "Datum|KN|interne Nr.",
-                          site_id_pattern = "^[0-9][0-9]?[0-9]?[0-9]?", 
-                          dbg = TRUE) {
+read_bwb_data_meta <- function(
+  xlsx_file, 
+  meta_sheet_pattern = "META",
+  pattern_gather_ignore = "Datum|KN|[iI]nterne Nr.|Name der|Ort|Probe|Pr\u00fcf|Untersuchung|Labor|Jahr|Galer|Detail|Me\u00DF|Zeit|Bezei") {
 
+  res <- NULL
+  
+  sheets <- readxl::excel_sheets(path = xlsx_file)
+  
+  has_meta_sheet <- stringr::str_detect(string = sheets,
+                                        pattern = meta_sheet_pattern)
+  n_meta <- sum(has_meta_sheet)
+  if( n_meta == 1) {
+  meta_sheet <- sheets[has_meta_sheet]
+  
+  } else if (n_meta > 1)  {
+    wrn <- sprintf("%s does contains %d sheets named '%s'\n",
+                   xlsx_file,
+                   n_meta,
+                   meta_sheet_pattern)
+    stop(cat(wrn))
+  } else {
+    wrn <- sprintf("%s does not contain a sheet named '%s'\n",
+                   xlsx_file,
+                   meta_sheet_pattern)
+    stop(cat(wrn))
+  }
+  
+  metadata <- readxl::read_excel(path = xlsx_file, 
+                     sheet = meta_sheet)
+  
+  
+  for (data_sheet_idx in seq_along(unique(metadata$Sheet))) {
+    sel_data_sheet <- metadata$Sheet[data_sheet_idx]
+    sel_metadata <- metadata[metadata$Sheet == sel_data_sheet,]
+    
+    cols_not_to_gather <- sel_metadata$Name[stringr::str_detect(sel_metadata$OriginalName, 
+                        pattern = pattern_gather_ignore)]
+    
+    tmp_data <- readxl::read_excel(path = xlsx_file, 
+                       sheet = sel_data_sheet)
+    
+    tmp_df <- tmp_data %>% 
+      tidyr::gather_(key_col = "VariableName", 
+                     value_col = "DataValue", 
+                     gather_cols = setdiff(names(tmp_data), 
+                                           cols_not_to_gather)) %>% 
+      dplyr::left_join(y = sel_metadata, by = c("VariableName" = "Name"))
+    
+    
+    if(!is.null(res)) {
+      res <- tmp_df
+    } else {
+      res <- data.table::rbindlist(l = list(res, 
+                                            tmp_df))
+    }
+    
+  }
+  return(res)
+  
+}
+
+
+read_bwb_data <- function(
+  xlsx_file, 
+  skip = 2,
+  pattern_gather_ignore = "Datum|KN|[iI]nterne Nr.|Name der|Ort|Probe|Pr\u00fcf|Untersuchung|Labor|Jahr|Galer|Detail|Me\u00DF|Zeit|Bezei",
+  site_id_pattern = "^[0-9][0-9]?[0-9]?[0-9]?", 
+  dbg = TRUE) {
+
+
+res <- NULL  
+  
 sheets <- readxl::excel_sheets(path = xlsx_file)
+
+has_meta_sheet <- stringr::str_detect(string = sheets,
+                                     pattern = "META")
 
 contains_site <- stringr::str_detect(string = sheets,
                                      pattern = site_id_pattern)
 
 
-res <- NULL
-
-
-if (any(!contains_site)) {
-  wrn_msg <- crayon::blue(
-    sprintf("FROM: %s\nIgnoring the following (%d/%d) sheet(s):\n%s\n", 
-                     xlsx_file, 
-                     sum(!contains_site), 
-                     length(sheets), 
-                     paste(sheets[!contains_site],collapse = ", ")))
-  warning(cat(wrn_msg))
-  
-}
-
-
-if (any(contains_site)) {
+ # if (any(has_meta_sheet)) {
+ #   read_bwb_data_meta(xlsx_file, 
+ #                      meta_sheet,
+ #                      )
+ #   
+ # } else 
+   
+   if (any(contains_site)) {
+   
+   if (any(!contains_site)) {
+     wrn_msg <- crayon::blue(
+       sprintf("FROM: %s\nIgnoring the following (%d/%d) sheet(s):\n%s\n", 
+               xlsx_file, 
+               sum(!contains_site), 
+               length(sheets), 
+               paste(sheets[!contains_site],collapse = ", ")))
+     warning(cat(wrn_msg))
+     
+   }
+   
  
   for(sheet_index in which(contains_site)) {
     sheet_name <- sheets[sheet_index]
@@ -115,17 +189,21 @@ return(res)
 }
 
 import_labor <- function(xlsx_files,
-                         export_dir) {
+                         export_dir,
+                         func = read_bwb_data) {
+  
+  func_name <- as.character(substitute(func))
   
   labor <- sapply(xlsx_files, FUN = function(file){
-    try(expr = read_bwb_data(xlsx_file = file))})
+    try(expr = func(xlsx_file = file))})
   
   names(labor) <- basename(xlsx_files)
   writeLines(text = capture.output(str(labor,
                                        nchar.max = 254,
                                        list.len = 10000)), 
              con = file.path(export_dir, 
-                             "import_labor_structure.txt",
+                             sprintf("%s_structure.txt",
+                                     func_name),
                              fsep = "\\"))
   
   return(labor)  
