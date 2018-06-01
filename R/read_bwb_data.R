@@ -15,7 +15,9 @@ get_SiteID <- function(string,
 
 read_bwb_data <- function(xlsx_file, 
                           skip = 2,
-                          site_id_pattern = "^[0-9][0-9]?[0-9]?[0-9]?") {
+                          pattern_gather_ignore = "Datum|KN|interne Nr.",
+                          site_id_pattern = "^[0-9][0-9]?[0-9]?[0-9]?", 
+                          dbg = TRUE) {
 
 sheets <- readxl::excel_sheets(path = xlsx_file)
 
@@ -27,13 +29,13 @@ res <- NULL
 
 
 if (any(!contains_site)) {
-  wrn_msg <- cat(crayon::blue(
+  wrn_msg <- crayon::blue(
     sprintf("FROM: %s\nIgnoring the following (%d/%d) sheet(s):\n%s\n", 
                      xlsx_file, 
                      sum(!contains_site), 
                      length(sheets), 
-                     paste(sheets[!contains_site],collapse = ", "))))
-  warning(wrn_msg)
+                     paste(sheets[!contains_site],collapse = ", ")))
+  warning(cat(wrn_msg))
   
 }
 
@@ -73,17 +75,30 @@ if (any(contains_site)) {
                                                tmp_header$id)]
     
     ### Check content format:
-    table(unlist(sapply(tmp_content, class)))
-    
-    pattern_gather_ignore <- "Datum|KN|interne Nr."
+    tbl_datatypes <- table(unlist(sapply(tmp_content, class)))
+    tbl_datatypes <- sort(tbl_datatypes,decreasing = TRUE)
+  
     cols_not_to_gather <- names(tmp_content)[grepl(pattern = pattern_gather_ignore, 
                                                    x = names(tmp_content))]
     
-    tmp_df <- tidyr::gather_(data = tmp_content,
-                             key_col = "key", 
-                             value_col = "DataValue", 
-                             gather_cols = setdiff(names(tmp_content), cols_not_to_gather)) %>% 
-      dplyr::left_join(y = tmp_header)
+    if (dbg) {
+      cat(crayon::green(crayon::bold(
+      sprintf("The following datatypes were detected:\n%s", 
+              paste(sprintf("%d x %s", 
+                            as.numeric(tbl_datatypes), 
+                            names(tbl_datatypes)), 
+                    collapse = ", ")))))
+      
+      cat(crayon::green(crayon::bold(
+      stringr::str_c("\nThe following column(s) will be used as headers:\n",
+                    stringr::str_c(cols_not_to_gather, collapse = ", "
+                  ),"\n"))))
+    }
+    tmp_df <- tidyr::gather_(
+      data = tmp_content, key_col = "key", value_col = "DataValue", 
+      gather_cols = setdiff(names(tmp_content), cols_not_to_gather)
+    ) %>% 
+      dplyr::left_join(y = tmp_header, by = "key")
     
     if(!is.null(res)) {
       res <- tmp_df

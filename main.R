@@ -1,16 +1,16 @@
-install.packages(c("fs", "tidyr", "dplyr", "stringr", "readxl", "devtools", 
-                   "crayon", "data.table"))
+install.packages(c("fs", "tidyr", "dplyr", "stringr", "readxl", "devtools",
+                    "crayon", "data.table"))
 devtools::install_github("kwb-r/kwb.utils")
-                 
+
 
 source(file = "R/convert_xls_as_xlsx.R")
 source(file = "R/copy_xlsx_files.R")
 source(file = "R/read_bwb_data.R")
 
 path_list <- list(
-  #drive = "//medusa/projekte$/Z-Exchange/Jeansen",
+  drive = "//medusa/projekte$/Z-Exchange/Jeansen",
   #drive = file.path(kwb.utils::get_homedir(), "Downloads"),
-  drive = "F:",
+  #drive = "F:",
   input_dir = "<drive>/Daten_Labor",
   export_dir = "<drive>/ANALYSIS_R/tmp")
 
@@ -36,6 +36,8 @@ xlsx_files <- dir(paths$export_dir,
                   recursive = TRUE, 
                   full.names = TRUE)
 
-
+txt <- capture.output(
 labor <- import_labor(xlsx_files = xlsx_files,
-                      export_dir = paths$export_dir)
+                      export_dir = paths$export_dir))
+
+packrat::snapshot()

@@ -44,17 +44,17 @@ delete_registry <- function(office_folder = safe_office_folder(), dbg = TRUE)
   # http://justgeeks.blogspot.com/2014/08/
   # free-convert-for-excel-files-xls-to-xlsx.html
 
-  patterns <- list(
+  patterns <- kwb.utils::resolve(list(
     office = "HKEY_CURRENT_USER\\Software\\Microsoft\\Office",
     reg_entry = "<office>\\<version>.0\\Excel\\Resiliency\\StartupItems",
     command = "reg delete <reg_entry> /f",
     debug = "Deleting registry entry:\n<command>",
     version = stringr::str_extract(parent_folder, pattern = "[1][0-9]")
-  )
+  ))
   
-  kwb.utils::catIf(dbg, kwb.utils::resolve("debug", patterns))
+  kwb.utils::catIf(dbg, patterns$debug)
 
-  system(command = command)
+  system(command = patterns$command)
 }
 
 ### Convert xls to xlsx in temp dir
@@ -70,7 +70,9 @@ convert_xls_as_xlsx <- function(
   
   pattern <- "\\.([xX][lL][sS])$"
   
-  xls_files <- dir(input_dir, pattern, recursive = TRUE, full.names = TRUE)
+  xls_files <- normalizePath(dir(
+    input_dir, pattern, recursive = TRUE, full.names = TRUE
+  ))
 
   xlsx_files <- gsub(input_dir, export_dir, xls_files, fixed = TRUE)
   
@@ -78,7 +80,7 @@ convert_xls_as_xlsx <- function(
 
   fs::dir_create(path = normalizePath(dirname(xlsx_files)), recursive = TRUE) 
 
-  exe <- get_excelcnv_exe(office_folder)
+  exe <- normalizePath(get_excelcnv_exe(office_folder))
   
   for (i in seq_along(xls_files)) {
 

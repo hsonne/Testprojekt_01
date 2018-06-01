@@ -1,6 +1,6 @@
 PackratFormat: 1.4
 PackratVersion: 0.4.9.2
-RVersion: 3.5.0
+RVersion: 3.4.3
 Repos: CRAN=https://cran.rstudio.com/,
     CRANextra=http://www.stats.ox.ac.uk/pub/RWin
 
@@ -165,8 +165,8 @@ Hash: 81a8008a5e7858552503935f1abe48aa
 
 Package: purrr
 Source: CRAN
-Version: 0.2.4
-Hash: a80b244ccd3fdb33a0ff2be3c50dd648
+Version: 0.2.5
+Hash: 8b0c16db10c7e20b70cd37779a673a8b
 Requires: magrittr, rlang, tibble
 
 Package: readxl
@@ -182,8 +182,8 @@ Hash: ad4faf59e7611117ff165817074c50c7
 
 Package: rlang
 Source: CRAN
-Version: 0.2.0
-Hash: 647e2e50a72557d1a770dcd6701e562b
+Version: 0.2.1
+Hash: 2b163b981be3d6daaac1ad505dd0bf30
 
 Package: rstudioapi
 Source: CRAN
