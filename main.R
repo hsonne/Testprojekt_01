@@ -54,4 +54,13 @@ writeLines(txt2,
            con = file.path(paths$export_dir, 
                            "read_bwb_data_meta_Rconsole.txt"))
 
+
+
+length(which(sapply(labor_header2, function(x) {is.data.frame(x)})))
+length(which(sapply(labor_header1_meta, function(x) {is.data.frame(x)})))
+
+sum(unlist(sapply(labor_header2, function(x) {nrow(x)})))
+sum(unlist(sapply(labor_header1_meta, function(x) {nrow(x)})))
+
+
 packrat::snapshot()
