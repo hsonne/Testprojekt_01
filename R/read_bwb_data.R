@@ -45,7 +45,7 @@ read_bwb_header1_meta <- function(
   described_sheets <- unique(kwb.utils::selectColumns(metadata, "Sheet"))
 
   # Loop through the names of the sheets for which metadata are available  
-  for (sheet in described_sheets) {
+  sheet_data_list <- lapply(described_sheets, function(sheet) {
 
     # Filter for the metadata given for the current sheet
     metadata_sheet <- metadata[metadata$Sheet == sheet, ]
@@ -64,25 +64,16 @@ read_bwb_header1_meta <- function(
     tmp_data <- readxl::read_excel(xlsx_file, sheet = sheet)
     
     # Convert the data from wide to long format
-    tmp_df <- tmp_data %>% 
+    tmp_data %>% 
       tidyr::gather_(
         key_col = "VariableName", 
         value_col = "DataValue", 
         gather_cols = setdiff(names(tmp_data), columns_not_to_gather)
       ) %>% 
       dplyr::left_join(y = metadata_sheet, by = c(VariableName = "Name"))
-    
-    result <- if (is.null(result)) {
-      
-      tmp_df
-      
-    } else {
-      
-      data.table::rbindlist(l = list(result, tmp_df), fill = TRUE)
-    }
-  }
+  })
   
-  result
+  data.table::rbindlist(l = sheet_data_list, fill = TRUE)
 }
 
 # get_meta_sheet_or_stop -------------------------------------------------------
