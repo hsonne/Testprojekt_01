@@ -1,6 +1,3 @@
-library(fs)
-library(kwb.utils)
-
 # get_excelcnv_exe -------------------------------------------------------------
 get_excelcnv_exe <- function(office_folder = safe_office_folder())
 {
@@ -71,28 +68,34 @@ convert_xls_as_xlsx <- function(
   
   pattern <- "\\.([xX][lL][sS])$"
   
-  xls_files <- normalizePath(dir(
+  xls <- normalizePath(dir(
     input_dir, pattern, recursive = TRUE, full.names = TRUE
   ))
 
-  xlsx_files <- gsub(input_dir, export_dir, xls_files, fixed = TRUE)
+  xlsx <- gsub(input_dir, export_dir, xls, fixed = TRUE)
   
-  xlsx_files <- gsub(pattern, ".xlsx", xlsx_files)
+  xlsx <- gsub(pattern, ".xlsx", xlsx)
 
-  fs::dir_create(path = normalizePath(dirname(xlsx_files)), recursive = TRUE) 
+  fs::dir_create(path = normalizePath(dirname(xlsx)), recursive = TRUE) 
 
   exe <- normalizePath(get_excelcnv_exe(office_folder))
   
-  for (i in seq_along(xls_files)) {
+  for (i in seq_along(xls)) {
 
-    command <- sprintf('"%s" -oice "%s" "%s"', exe, xls_files[i], xlsx_files[i])
-    
-    kwb.utils::catIf(dbg, sprintf(
-      "\nConverting xls to xlsx (%d/%d):\n%s\n", i, length(xls_files), command
-    ))
-
-    system(command)
+    convert_xls_to_xlsx(exe, xls[i], xlsx[i], n_files = length(xls))
     
     delete_registry(office_folder, dbg = dbg)
   }
+}
+
+# convert_xls_to_xlsx ----------------------------------------------------------
+convert_xls_to_xlsx <- function(exe, xls, xlsx, n_files)
+{
+  command <- sprintf('"%s" -oice "%s" "%s"', exe, xls, xlsx)
+  
+  kwb.utils::catIf(dbg, sprintf(
+    "\nConverting xls to xlsx (%d/%d):\n%s\n", i, n_files, command
+  ))
+  
+  system(command)
 }
