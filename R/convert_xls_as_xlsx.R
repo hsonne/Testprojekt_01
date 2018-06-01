@@ -82,14 +82,14 @@ convert_xls_as_xlsx <- function(
   
   for (i in seq_along(xls)) {
 
-    convert_xls_to_xlsx(exe, xls[i], xlsx[i], n_files = length(xls))
+    convert_xls_to_xlsx(exe, xls[i], xlsx[i], i, length(xls), dbg = dbg)
     
     delete_registry(office_folder, dbg = dbg)
   }
 }
 
 # convert_xls_to_xlsx ----------------------------------------------------------
-convert_xls_to_xlsx <- function(exe, xls, xlsx, n_files)
+convert_xls_to_xlsx <- function(exe, xls, xlsx, i, n_files, dbg = TRUE)
 {
   command <- sprintf('"%s" -oice "%s" "%s"', exe, xls, xlsx)
   
