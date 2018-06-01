@@ -40,25 +40,40 @@ xlsx_files <- dir(paths$export_dir,
                   recursive = TRUE, 
                   full.names = TRUE)
 
+labor_list <- import_labor(xlsx_files, 
+                           export_dir =  paths$export_dir,
+                           func = read_bwb_data)
+
 txt <- capture.output(
-labor_header2 <- import_labor(xlsx_files = xlsx_files,
-                      export_dir = paths$export_dir))
+labor <- read_bwb_data(xlsx_files = xlsx_files))
 writeLines(txt, con = file.path(paths$export_dir, "read_bwb_data_Rconsole.txt"))
 
 
 txt2 <- capture.output(
   labor_header1_meta <- import_labor(xlsx_files = xlsx_files,
                                 export_dir = paths$export_dir, 
-                                func = read_bwb_data_meta))
+                                func = read_bwb_header1_meta))
 writeLines(txt2, 
            con = file.path(paths$export_dir, 
-                           "read_bwb_data_meta_Rconsole.txt"))
+                           "read_bwb_header1_meta_Rconsole.txt"))
+
+
+txt3 <- capture.output(
+  labor_header2 <- import_labor(xlsx_files = xlsx_files,
+                                     export_dir = paths$export_dir, 
+                                     func = read_bwb_header2))
+writeLines(txt3, 
+           con = file.path(paths$export_dir, 
+                           "read_bwb_header2_Rconsole.txt"))
 
 
 
+length(which(sapply(labor_list, function(x) {is.data.frame(x)})))
 length(which(sapply(labor_header2, function(x) {is.data.frame(x)})))
 length(which(sapply(labor_header1_meta, function(x) {is.data.frame(x)})))
 
+nrow(labor)
+sum(unlist(sapply(labor_list, function(x) {nrow(x)})))
 sum(unlist(sapply(labor_header2, function(x) {nrow(x)})))
 sum(unlist(sapply(labor_header1_meta, function(x) {nrow(x)})))
 
