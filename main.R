@@ -34,14 +34,18 @@ script_paths <- sapply(script_paths, safePath)
 sourceScripts(script_paths)
 
 # Define paths and resolve placeholders
-paths <- resolve(list(
-  drive = "//medusa/projekte$/Z-Exchange/Jeansen",
-  #drive = file.path(kwb.utils::get_homedir(), "Downloads"),
-  #drive = "F:",
+paths <- list(
+  drive_jeansen = "//medusa/projekte$/Z-Exchange/Jeansen",
+  drive_stick = "F:",
+  drive_hauke_home = "<downloads>/Unterstuetzung/Michael",
+  downloads = "<home>/Downloads",
   input_dir = "<drive>/Daten_Labor",
   export_dir = "<drive>/ANALYSIS_R/tmp",
-  export_dir_allg = "<export_dir>/K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Allgemein"
-))
+  export_dir_allg = "<export_dir>/K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Allgemein",
+  home = get_homedir()
+)
+
+paths <- resolve(paths, drive = "drive_hauke_home")
 
 # Get location of excelcnv.exe
 get_excelcnv_exe()
@@ -100,3 +104,6 @@ sum(unlist(sapply(labor_header2, nrow)))
 sum(unlist(sapply(labor_header1_meta)))
 
 packrat::snapshot()
+
+# Tests
+read_bwb_header2(files[1])
