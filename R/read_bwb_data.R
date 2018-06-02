@@ -1,10 +1,3 @@
-# Better: call functions with <package>::
-
-#library(readxl)
-#library(stringr)
-#library(dplyr)
-#library(crayon)
-
 # get_SiteID -------------------------------------------------------------------
 get_SiteID <- function(string, pattern = "^[0-9]{1,4}")
 {
@@ -94,7 +87,7 @@ get_meta_sheet_or_stop <- function(sheets, pattern, file)
 # stop_formatted ---------------------------------------------------------------
 stop_formatted <- function(fmt, ...)
 {
-  stop(sprintf(fmt, ...))
+  stop(sprintf(fmt, ...), call. = FALSE)
 }
 
 # read_bwb_header2 -------------------------------------------------------------
@@ -106,9 +99,6 @@ read_bwb_header2 <- function(
   # Define helper functions
   read_from_excel <- function(...) readxl::read_excel(..., col_names = FALSE)
 
-  # Initialise the result
-  result <- NULL
-  
   sheets <- readxl::excel_sheets(file)
   
   has_site_id <- stringr::str_detect(sheets, site_id_pattern)
@@ -156,7 +146,14 @@ stop_on_missing_or_inform_on_extra_sheets <- function(has_site_id, file, sheets)
 {
   if (! any(has_site_id)) {
     
-    stop_formatted("No data sheet in %s available!", file)
+    stop_formatted(
+      paste0(
+      "No data sheet has a site code in its name!\n", 
+      "File:\n  '%s'\n",
+      "Sheet names:\n  %s\n"
+      ), 
+      file, kwb.utils::stringList(sheets, collapse = "\n  ")
+    )
   }
   
   if (! all(has_site_id)) {
@@ -214,6 +211,8 @@ cat_green_bold_0 <- function(...)
 # gather_and_join_1 ------------------------------------------------------------
 gather_and_join_1 <- function(tmp_data, columns_keep, metadata)
 {
+  `%>%` <- magrittr::`%>%`
+  
   tidyr::gather_(
     data = tmp_data, key_col = "VariableName", value_col = "DataValue", 
     gather_cols = setdiff(names(tmp_data), columns_keep)
@@ -224,6 +223,8 @@ gather_and_join_1 <- function(tmp_data, columns_keep, metadata)
 # gather_and_join_2 ------------------------------------------------------------
 gather_and_join_2 <- function(tmp_content, columns_keep, header)
 {
+  `%>%` <- magrittr::`%>%`
+  
   tidyr::gather_(
     data = tmp_content, key_col = "key", value_col = "DataValue", 
     gather_cols = setdiff(names(tmp_content), columns_keep)
