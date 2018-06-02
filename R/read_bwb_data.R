@@ -6,7 +6,7 @@
 #library(crayon)
 
 # get_SiteID -------------------------------------------------------------------
-get_SiteID <- function(string, pattern = "^[0-9][0-9]?[0-9]?[0-9]?")
+get_SiteID <- function(string, pattern = "^[0-9]{1,4}")
 {
   as.numeric(stringr::str_extract(string, pattern))
 }
@@ -25,54 +25,43 @@ gather_ignore <- function()
 
 # read_bwb_header1_meta --------------------------------------------------------
 read_bwb_header1_meta <- function(
-  xlsx_file, 
-  meta_sheet_pattern = "META", 
-  pattern_gather_ignore = gather_ignore()
+  file, meta_pattern = "META", keep_pattern = gather_ignore()
 )
 {
-  result <- NULL
-  
   # Get the names of the sheets in the Excel workbook
-  sheets <- readxl::excel_sheets(xlsx_file)
-
+  sheets <- readxl::excel_sheets(file)
+  
   # Try to find the sheet containing meta data
-  meta_sheet <- get_meta_sheet_or_stop(sheets, meta_sheet_pattern, xlsx_file)
-
+  meta_sheet <- get_meta_sheet_or_stop(sheets, meta_pattern, file)
+  
   # Read the metadata sheet
-  metadata <- readxl::read_excel(xlsx_file, sheet = meta_sheet)
+  all_metadata <- readxl::read_excel(file, meta_sheet)
   
   # Get the names of the sheets for which metadata are available
   described_sheets <- unique(kwb.utils::selectColumns(metadata, "Sheet"))
-
+  
   # Loop through the names of the sheets for which metadata are available  
   sheet_data_list <- lapply(described_sheets, function(sheet) {
-
+    
     # Filter for the metadata given for the current sheet
-    metadata_sheet <- metadata[metadata$Sheet == sheet, ]
-    
-    # Safely select the original and the clean column names, respectively
-    columns_orig <- kwb.utils::selectColumns(metadata_sheet, "OriginalName")
-    columns_clean <- kwb.utils::selectColumns(metadata_sheet, "Name")
-    
-    # Are the columns to be gathered?
-    do_not_gather <- stringr::str_detect(columns_orig, pattern_gather_ignore)
-
-    # (Clean) names of the columns not to be gathered    
-    columns_not_to_gather <- columns_clean[do_not_gather]
+    metadata <- all_metadata[all_metadata$Sheet == sheet, ]
     
     # Load the data from the current sheet
-    tmp_data <- readxl::read_excel(xlsx_file, sheet = sheet)
+    tmp_data <- readxl::read_excel(file, sheet)
+
+    # Safely select the original and the clean column names, respectively
+    columns_orig <- kwb.utils::selectColumns(metadata, "OriginalName")
+    
+    columns_clean <- kwb.utils::selectColumns(metadata, "Name")
+
+    # Are the columns not to be gathered, i.e. to be kept as columns?
+    keep <- stringr::str_detect(columns_orig, keep_pattern)
     
     # Convert the data from wide to long format
-    tmp_data %>% 
-      tidyr::gather_(
-        key_col = "VariableName", 
-        value_col = "DataValue", 
-        gather_cols = setdiff(names(tmp_data), columns_not_to_gather)
-      ) %>% 
-      dplyr::left_join(y = metadata_sheet, by = c(VariableName = "Name"))
+    gather_and_join_1(tmp_data, columns_clean[keep], metadata)
   })
   
+  # Merge all data frames in long format  
   data.table::rbindlist(l = sheet_data_list, fill = TRUE)
 }
 
@@ -80,220 +69,235 @@ read_bwb_header1_meta <- function(
 get_meta_sheet_or_stop <- function(sheets, pattern, file)
 {
   meta_sheets <- sheets[stringr::str_detect(sheets, pattern)]
-
+  
   # Number of meta sheets  
   n <- length(meta_sheets)
   
   if (n == 0) {
     
-    stop(sprintf(
-      "%s does not contain a sheet matching '%s'\n", file, pattern
-    ))
+    stop_formatted(
+      "%s does not contain a sheet matching '%s'\n", 
+      file, pattern
+    )
     
   } else if (n > 1)  {
     
-    stop(sprintf(
+    stop_formatted(
       "%s contains %d sheets matching '%s': %s\n", 
       file, n, pattern, kwb.utils::stringList(meta_sheets)
-    ))
-    
+    )
   }
   
   meta_sheets
 }
 
+# stop_formatted ---------------------------------------------------------------
+stop_formatted <- function(fmt, ...)
+{
+  stop(sprintf(fmt, ...))
+}
+
 # read_bwb_header2 -------------------------------------------------------------
 read_bwb_header2 <- function(
-  xlsx_file, 
-  skip = 2,
-  pattern_gather_ignore = gather_ignore(),
-  site_id_pattern = "^[0-9][0-9]?[0-9]?[0-9]?",
-  dbg = TRUE) {
-  
+  file, skip = 2, keep_pattern = gather_ignore(), 
+  site_id_pattern = "^[0-9]{1,4}", dbg = TRUE
+)
+{
+  # Define helper functions
+  read_from_excel <- function(...) readxl::read_excel(..., col_names = FALSE)
+
+  # Initialise the result
   result <- NULL
   
-  sheets <- readxl::excel_sheets(path = xlsx_file)
+  sheets <- readxl::excel_sheets(file)
   
-  contains_site <- stringr::str_detect(string = sheets,
-                                       pattern = site_id_pattern)
+  has_site_id <- stringr::str_detect(sheets, site_id_pattern)
   
-  if (any(contains_site)) {
+  stop_on_missing_or_inform_on_extra_sheets(has_site_id, file, sheets)
+
+  data_frames <- lapply(which(has_site_id), function(sheet_index) {
     
-    if (any(!contains_site)) {
-      wrn_msg <- crayon::blue(
-        sprintf("FROM: %s\nIgnoring the following (%d/%d) sheet(s):\n%s\n", 
-                xlsx_file, 
-                sum(!contains_site), 
-                length(sheets), 
-                paste(sheets[!contains_site],collapse = ", ")))
-      warning(cat(wrn_msg))
-      
-    }
+    sheet <- sheets[sheet_index]
     
+    cat(sprintf(
+      "FROM: %s\nReading sheet (%d/%d): %s\n", 
+      file, sheet_index, length(sheets), sheet
+    ))
     
-    for(sheet_index in which(contains_site)) {
-      
-      sheet_name <- sheets[sheet_index]
-      
-      cat(sprintf("FROM: %s\nReading sheet (%d/%d): %s\n", 
-                  xlsx_file, 
-                  sheet_index, 
-                  length(sheets),
-                  sheet_name))
-      
-      tmp_header <- readxl::read_excel(path = xlsx_file,
-                                       sheet = sheet_name, 
-                                       n_max = skip, 
-                                       col_names = FALSE)
-      
-      tmp_header <- as.data.frame(t(tmp_header))
-      names(tmp_header) <- c("VariableName", "UnitName")
-      tmp_header$id <- rownames(tmp_header)
-      tmp_header$key <- sprintf("%s@%s",
-                                tmp_header$VariableName,
-                                tmp_header$UnitName)
-      tmp_header$file_name <- normalizePath(xlsx_file)
-      tmp_header$sheet_name <- sheet_name
-      tmp_header$SiteID <- get_SiteID(sheet_name)
-      
-      tmp_content <- readxl::read_excel(path = xlsx_file,
-                                        sheet = sheet_name, 
-                                        skip = skip, 
-                                        col_names = FALSE)
-      
-      names(tmp_content) <- tmp_header$key[match(names(tmp_content), 
-                                                 tmp_header$id)]
-      
-      ### Check content format:
-      tbl_datatypes <- table(unlist(sapply(tmp_content, class)))
-      tbl_datatypes <- sort(tbl_datatypes,decreasing = TRUE)
-      
-      columns_not_to_gather <- grep(pattern_gather_ignore, names(tmp_content), value = TRUE)
-      
-            
-      if (dbg) {
-        cat(crayon::green(crayon::bold(
-          sprintf("The following datatypes were detected:\n%s", 
-                  paste(sprintf("%d x %s", 
-                                as.numeric(tbl_datatypes), 
-                                names(tbl_datatypes)), 
-                        collapse = ", ")))))
+    # Read the header rows      
+    stopifnot(skip == 2) # Otherwise we need more column names!
+    header <- read_from_excel(file, sheet, n_max = skip)
+    header <- to_full_metadata(header, file, sheet)
         
-        cat(crayon::green(crayon::bold(
-          stringr::str_c("\nThe following column(s) will be used as headers:\n",
-                         stringr::str_c(columns_not_to_gather, collapse = ", "
-                         ),"\n"))))
-      }
-      ### To do: check for duplicates in names
-      tmp_df <- tidyr::gather_(
-        data = tmp_content, key_col = "key", value_col = "DataValue", 
-        gather_cols = setdiff(names(tmp_content), columns_not_to_gather)
-      ) %>% 
-        dplyr::left_join(y = tmp_header, by = "key")
-      
-      if(!is.null(result)) {
-        result <- tmp_df
-      } else {
-        result <- data.table::rbindlist(l = list(result, 
-                                              tmp_df), 
-                                     fill = TRUE)
-      }
-      
-      
-    }} else {
-      stop(sprintf("No data sheet in %s available!", xlsx_file))  
-    }
-  
-  return(result)
-  
+    # Read the data rows      
+    tmp_content <- read_from_excel(file, sheet, skip = skip)
+    
+    indices <- match(names(tmp_content), header$id)
+    
+    names(tmp_content) <- header$key[indices]
+    
+    # Check content format
+    tbl_datatypes <- table(unlist(sapply(tmp_content, class)))
+    tbl_datatypes <- sort(tbl_datatypes, decreasing = TRUE)
+    
+    columns_keep <- grep(keep_pattern, names(tmp_content), value = TRUE)
+    
+    print_datatype_info_if(dbg, tbl_datatypes, columns_keep)
+    
+    # TODO: check for duplicates in names
+    gather_and_join_2(tmp_content, columns_keep, header)
+  })
+
+  data.table::rbindlist(l = data_frames, fill = TRUE)
 }
 
-
-read_bwb_data <- function(
-  xlsx_files, 
-  meta_sheet_pattern = "META",
-  pattern_gather_ignore = gather_ignore(),
-  site_id_pattern = "^[0-9][0-9]?[0-9]?[0-9]?", 
-  dbg = TRUE) {
-
-
-result <- NULL  
-
-
-for (xlsx_file in xlsx_files) {
-
+# stop_on_missing_or_inform_on_extra_sheets ------------------------------------
+stop_on_missing_or_inform_on_extra_sheets <- function(has_site_id, file, sheets)
+{
+  if (! any(has_site_id)) {
+    
+    stop_formatted("No data sheet in %s available!", file)
+  }
   
-sheets <- readxl::excel_sheets(path = xlsx_file)
+  if (! all(has_site_id)) {
+    
+    warning(crayon::blue(sprintf(
+      "FROM: %s\nIgnoring the following (%d/%d) sheet(s):\n%s\n", 
+      file, sum(! has_site_id), length(sheets), 
+      kwb.utils::stringList(sheets[! has_site_id])
+    )))
+  }
+}
 
-is_meta <- stringr::str_detect(string = sheets,
-                                     pattern = "META")
+# to_full_metadata -------------------------------------------------------------
+to_full_metadata <- function(header, file, sheet)
+{
+  # Start a metadata table with the Variable name and unit
+  header <- as.data.frame(t(header))
+  names(header) <- c("VariableName", "UnitName")
+  
+  # Extend the metadata      
+  header$key <- kwb.utils::pasteColumns(header, sep = "@")
+  header$id <- rownames(header)
+  header$file_name <- normalizePath(file)
+  header$sheet_name <- sheet
+  header$SiteID <- get_SiteID(sheet)
 
-contains_site <- stringr::str_detect(string = sheets,
-                                     pattern = site_id_pattern)
+  header  
+}
 
-
- if (any(is_meta)) {
-   tmp_header1_meta <- read_bwb_header1_meta(
-     xlsx_file = xlsx_file, 
-     meta_sheet_pattern = meta_sheet_pattern, 
-     pattern_gather_ignore = pattern_gather_ignore
+# print_datatype_info_if -------------------------------------------------------
+print_datatype_info_if <- function(dbg, tbl_datatypes, columns_keep)
+{
+  if (dbg) {
+    
+    cat_green_bold_0(
+      "The following datatypes were detected:\n", 
+      kwb.utils::stringList(qchar = "", sprintf(
+        "%d x %s", as.numeric(tbl_datatypes), names(tbl_datatypes)
+      ))
     )
-   
-   if(!exists("tmp_header1_meta")) break
-   if(nrow(tmp_header1_meta) == 0) break
-   
-   if(is.null(result)) {
-     result <- tmp_header1_meta
-   } else {
-     result <- data.table::rbindlist(l = list(result, 
-                                              tmp_header1_meta), 
-                                              fill = TRUE)
-   }
-
- } else if (any(contains_site)) {
-   tmp_header2 <- read_bwb_header2(
-     xlsx_file, 
-     pattern_gather_ignore = pattern_gather_ignore,
-     site_id_pattern = site_id_pattern,
-     dbg = dbg)
-   
-   if(!exists("tmp_header2")) break
-   if(nrow(tmp_header2) == 0) break
-   if(is.null(result)) {
-     result <- tmp_header2
-   } else {
-     result <- data.table::rbindlist(l = list(result, 
-                                              tmp_header2),
-                                              fill = TRUE)
-   }
-   
-   } else {
-    cat(crayon::bold(crayon::red(
-     sprintf("'%s' does not follow import schemes defined in functions %s\n", 
-                  basename(xlsx_file), 
-                  "read_bwb_header1_meta() or read_bwb_header2()"))))  
-   }
-}
-return(result)
+    
+    cat_green_bold_0(stringr::str_c(
+      "\nThe following column(s) will be used as headers:\n",
+      stringr::str_c(columns_keep, collapse = ", "), "\n"
+    ))
+  }
 }
 
-import_labor <- function(xlsx_files,
-                         export_dir,
-                         func = read_bwb_header2) {
+# cat_green_bold_0 -------------------------------------------------------------
+cat_green_bold_0 <- function(...)
+{
+  cat(crayon::green(crayon::bold(paste0(...))))
+}
+
+# gather_and_join_1 ------------------------------------------------------------
+gather_and_join_1 <- function(tmp_data, columns_keep, metadata)
+{
+  tidyr::gather_(
+    data = tmp_data, key_col = "VariableName", value_col = "DataValue", 
+    gather_cols = setdiff(names(tmp_data), columns_keep)
+  ) %>% 
+    dplyr::left_join(y = metadata, by = c(VariableName = "Name"))
+}
+
+# gather_and_join_2 ------------------------------------------------------------
+gather_and_join_2 <- function(tmp_content, columns_keep, header)
+{
+  tidyr::gather_(
+    data = tmp_content, key_col = "key", value_col = "DataValue", 
+    gather_cols = setdiff(names(tmp_content), columns_keep)
+  ) %>% 
+    dplyr::left_join(y = header, by = "key")
+}
+
+# read_bwb_data ----------------------------------------------------------------
+read_bwb_data <- function(
+  files, meta_pattern = "META", keep_pattern = gather_ignore(), 
+  site_id_pattern = "^[0-9]{1,4}", dbg = TRUE
+)
+{
+  result_list <- lapply(files, function(file) {
+    
+    sheets <- readxl::excel_sheets(file)
+    
+    is_meta <- stringr::str_detect(sheets, meta_pattern)
+    
+    has_site_id <- stringr::str_detect(sheets, site_id_pattern)
+
+    if (any(is_meta)) {
+      
+      header <- read_bwb_header1_meta(file, meta_pattern, keep_pattern)
+      
+      if (exists("header") && nrow(header)) {
+        
+        header
+
+      } # else NULL implicitly
+
+    } else if (any(has_site_id)) {
+      
+      header <- read_bwb_header2(
+        file, keep_pattern = keep_pattern, site_id_pattern = site_id_pattern, 
+        dbg = dbg
+      )
+      
+      if (exists("header") && nrow(header)) {
+        
+        header
+        
+      } # else NULL implicitly
+
+    } else {
+      
+      cat_red_bold_0(
+        "'", basename(file), "' does not follow import schemes defined ", 
+        "in functions read_bwb_header1_meta() or read_bwb_header2()\n"
+      )
+    }
+  })
   
-  func_name <- as.character(substitute(func))
+  data.table::rbindlist(l = kwb.utils::excludeNULL(result_list), fill = TRUE)
+}
+
+# cat_red_bold_0 ---------------------------------------------------------------
+cat_red_bold_0 <- function(...)
+{
+  cat(crayon::bold(crayon::red(paste0(...))))
+}
+
+# import_labor -----------------------------------------------------------------
+import_labor <- function(files, export_dir, func = read_bwb_header2)
+{
+  try_func_on_file <- function(file) try(func(file))
   
-  labor <- sapply(xlsx_files, FUN = function(file){
-    try(expr = func(xlsx_file = file))})
+  labor <- stats::setNames(lapply(files, try_func_on_file), basename(files))
   
-  names(labor) <- basename(xlsx_files)
-  writeLines(text = capture.output(str(labor,
-                                       nchar.max = 254,
-                                       list.len = 10000)), 
-             con = file.path(export_dir, 
-                             sprintf("%s_structure.txt",
-                                     func_name),
-                             fsep = "\\"))
+  file_name <- sprintf("%s_structure.txt", as.character(substitute(func)))
   
-  return(labor)  
+  file <- file.path(export_dir, file_name, fsep = "\\")
+  
+  capture.output(str(labor, nchar.max = 254, list.len = 10000), file = file)
+  
+  labor
 }
