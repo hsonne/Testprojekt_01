@@ -50,16 +50,17 @@ if (FALSE)
   # 41.636   2.516  45.321 
 
   # Get the path to a log file  
-  logfile <- tempfile("table_summary_", fileext = ".txt")
+  logfile_summary <- tempfile("table_summary_", fileext = ".txt")
+  logfile_headers <- tempfile("table_headers_", fileext = ".txt")
   
   # Write a summary of the read structure to the log file
-  capture.output(file = logfile, {
+  capture.output(file = logfile_summary, {
     
     for (tables in all_tables) print_table_summary(tables)
   })
 
   # Let's have a look at the tables in one Excel file only
-  tables <- all_tables[[2]]
+  tables <- all_tables[[1]]
   
   # Get a description of the sheets in that file
   kwb.utils::getAttribute(tables, "sheets")
@@ -67,6 +68,9 @@ if (FALSE)
   # Get a description of tables in that file
   kwb.utils::getAttribute(tables, "tables")
 
+  # Get the name of the file that was read
+  kwb.utils::getAttribute(tables, "file")
+  
   # The tables are named by sheet number and table number within the sheet
   # The numbers are hexadecimal, i.e a = 10, f = 16, ff = 255, 
   names(tables)
@@ -75,10 +79,18 @@ if (FALSE)
   # Try to guess the header rows for each table...
   n_max <- 4
   
+  guess_number_of_header_rows(x = tables$table_01_01)
+  guess_number_of_header_rows(x = tables$table_01_02)
+  guess_number_of_header_rows(x = tables$table_02_01)
+  guess_number_of_header_rows(x = tables$table_03_01)
+  guess_number_of_header_rows(x = tables$table_04_01)
+  guess_number_of_header_rows(x = tables$table_04_02)
+  guess_number_of_header_rows(x = tables$table_04_03)
+  
   print_logical_matrix(guess_header_matrix(x = tables$table_01_01, n_max))
   print_logical_matrix(guess_header_matrix(x = tables$table_02_01, n_max))
 
-  print_header_guesses(text_matrices = all_tables[[1]], n_max, file = logfile)
+  print_header_guesses(tables, n_max, file = logfile_headers)
 
   lapply(all_tables[[3]], guess_header_matrix, 4)
   
@@ -88,6 +100,22 @@ if (FALSE)
   
   print_logical_matrix(head(is_empty))
   print_logical_matrix(head(is_empty), invert = TRUE)
+}
+
+# guess_number_of_header_rows --------------------------------------------------
+guess_number_of_header_rows <- function(x, n_max = 10)
+{
+  stopifnot(is.character(x))
+  
+  kwb.utils::stopIfNotMatrix(x)
+  
+  header_matrix <- guess_header_matrix(x, n_max = n_max)
+
+  print_logical_matrix(head(header_matrix))
+  
+  ones_per_row <- rowSums(header_matrix)
+
+  kwb.event::hsEventsOnChange(diff(ones_per_row) < 0)[1, 2]
 }
 
 # print_header_guesses ---------------------------------------------------------
@@ -127,7 +155,7 @@ guess_header_matrix <- function(x, n_max = 10)
   
   do.call(cbind, lapply(x_head, function(column_values) {
     sapply(seq_along(column_values), function(i) {
-      as.integer(! (column_values[i] %in% column_values[-(1:(i-1))]))
+      as.integer(! (column_values[i] %in% column_values[-(1:i)]))
     })
   }))
 }
