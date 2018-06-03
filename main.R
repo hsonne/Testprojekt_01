@@ -1,5 +1,5 @@
 # Install packages from github
-devtools::install_github("kwb-r/kwb.utils")
+#devtools::install_github("kwb-r/kwb.utils")
 
 library(kwb.utils)
 
@@ -52,63 +52,84 @@ paths <- list(
 
 paths <- resolve(paths, drive = "drive_hauke_home")
 
-# Get location of excelcnv.exe
-get_excelcnv_exe()
-
-# Set input and output directory
-input_dir <- safePath(selectElements(paths, "input_dir"))
+# Set directory in which to provide all xlsx files
 export_dir <- safePath(selectElements(paths, "export_dir"))
 
-# Convert old ".xls" to ".xlsx" Excel files
-convert_xls_as_xlsx(input_dir, export_dir)
+if (FALSE)
+{
+  # Get location of excelcnv.exe
+  get_excelcnv_exe()
+  
+  # Set input directory
+  input_dir <- safePath(selectElements(paths, "input_dir"))
 
-# Copy remaining already existing .xlsx files in same directory
-copy_xlsx_files(input_dir, export_dir, overwrite = TRUE)
+  # Convert xls to xlsx Excel files
+  convert_xls_as_xlsx(input_dir, export_dir)
+  
+  # Copy remaining already existing .xlsx files in same directory
+  copy_xlsx_files(input_dir, export_dir, overwrite = TRUE)
+}
 
 # Get all xlsx files to be imported
 files <- dir(export_dir, ".xlsx", recursive = TRUE, full.names = TRUE)
 
-labor <- import_labor(files, export_dir = export_dir)
+file_database <- to_file_database(files)
 
-labor_list <- import_labor(files, export_dir = export_dir, func = read_bwb_data)
+# files:
+# file_id             file_name folder_id
+# file_01 haesslicher name.xlsx folder_01
 
-output_files <- file.path(export_dir, c(
-  "read_bwb_data_Rconsole.txt", 
-  "read_bwb_header1_meta_Rconsole.txt", 
-  "read_bwb_header2_Rconsole.txt"
-))
+# folders:
+# folder_id folder_path
+# - attr(*, "base_dir")
 
-capture.output(file = output_files[1], {
+file_database$files
+file_database$folders
+
+if (FALSE)
+{
+  labor <- import_labor(files, export_dir = export_dir)
   
-  labor <- read_bwb_data(files)
-})
-
-capture.output(file = output_files[2], {
+  labor_list <- import_labor(files, export_dir = export_dir, func = read_bwb_data)
   
-  labor_header1_meta <- import_labor(files, export_dir, read_bwb_header1_meta)
-})
-
-capture.output(file = output_files[3], {
+  output_files <- file.path(export_dir, c(
+    "read_bwb_data_Rconsole.txt", 
+    "read_bwb_header1_meta_Rconsole.txt", 
+    "read_bwb_header2_Rconsole.txt"
+  ))
   
-  labor_header2 <- import_labor(files, export_dir, read_bwb_header2)
-})
-
-# Show file contents
-catLines(readLines(output_files[1]))
-catLines(readLines(output_files[2]))
-catLines(readLines(output_files[3]))
-
-length(which(sapply(labor_list, is.data.frame)))
-length(which(sapply(labor_header2, is.data.frame)))
-length(which(sapply(labor_header1_meta, is.data.frame)))
-
-nrow(labor)
-
-sum(unlist(sapply(labor_list, nrow)))
-sum(unlist(sapply(labor_header2, nrow)))
-sum(unlist(sapply(labor_header1_meta)))
-
-packrat::snapshot()
-
-# Tests
-read_bwb_header2(files[1])
+  capture.output(file = output_files[1], {
+    
+    labor <- read_bwb_data(files)
+  })
+  
+  capture.output(file = output_files[2], {
+    
+    labor_header1_meta <- import_labor(files, export_dir, read_bwb_header1_meta)
+  })
+  
+  capture.output(file = output_files[3], {
+    
+    labor_header2 <- import_labor(files, export_dir, read_bwb_header2)
+  })
+  
+  # Show file contents
+  catLines(readLines(output_files[1]))
+  catLines(readLines(output_files[2]))
+  catLines(readLines(output_files[3]))
+  
+  length(which(sapply(labor_list, is.data.frame)))
+  length(which(sapply(labor_header2, is.data.frame)))
+  length(which(sapply(labor_header1_meta, is.data.frame)))
+  
+  nrow(labor)
+  
+  sum(unlist(sapply(labor_list, nrow)))
+  sum(unlist(sapply(labor_header2, nrow)))
+  sum(unlist(sapply(labor_header1_meta)))
+  
+  packrat::snapshot()
+  
+  # Tests
+  read_bwb_header2(file = files[1])
+}
