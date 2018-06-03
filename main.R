@@ -24,7 +24,12 @@ if (length(missing_packages)) {
 script_paths <- file.path("./R", c(
   "convert_xls_as_xlsx.R",
   "copy_xlsx_files.R",
-  "read_bwb_data.R"
+  "file_database.R",
+  "get_raw_text_from_xlsx.R",
+  "get_tables_from_xlsx.R",
+  "print_table_summary.R",
+  "read_bwb_data.R",
+  "utils.R"
 ))
 
 # Check if all scripts exist
