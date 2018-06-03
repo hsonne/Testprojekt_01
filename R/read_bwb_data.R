@@ -42,12 +42,13 @@ read_bwb_header1_meta <- function(
     # Load the data from the current sheet
     tmp_data <- readxl::read_excel(file, sheet)
 
-    # Safely select the original and the clean column names, respectively
+    # Safely select the original column names
     columns_orig <- kwb.utils::selectColumns(metadata, "OriginalName")
     
+    # Safely select the clean column names
     columns_clean <- kwb.utils::selectColumns(metadata, "Name")
 
-    # Are the columns not to be gathered, i.e. to be kept as columns?
+    # Are the columns kept as columns, i. e. excluded from gathering?
     keep <- stringr::str_detect(columns_orig, keep_pattern)
     
     # Convert the data from wide to long format
@@ -149,10 +150,12 @@ stop_on_missing_or_inform_on_extra_sheets <- function(has_site_id, file, sheets)
     stop_formatted(
       paste0(
       "No data sheet has a site code in its name!\n", 
+      "Folder:\n  %s\n",
       "File:\n  '%s'\n",
       "Sheet names:\n  %s\n"
       ), 
-      file, kwb.utils::stringList(sheets, collapse = "\n  ")
+      dirname(file), basename(file),
+      kwb.utils::stringList(sheets, collapse = "\n  ")
     )
   }
   
