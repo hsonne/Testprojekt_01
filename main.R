@@ -50,7 +50,10 @@ paths <- list(
   home = get_homedir()
 )
 
-paths <- resolve(paths, drive = "drive_hauke_home")
+paths <- resolve(paths, drive = "drive_jeansen")
+
+# Set input directory
+input_dir <- safePath(selectElements(paths, "input_dir"))
 
 # Set directory in which to provide all xlsx files
 export_dir <- safePath(selectElements(paths, "export_dir"))
@@ -60,9 +63,6 @@ if (FALSE)
   # Get location of excelcnv.exe
   get_excelcnv_exe()
   
-  # Set input directory
-  input_dir <- safePath(selectElements(paths, "input_dir"))
-
   # Convert xls to xlsx Excel files
   convert_xls_as_xlsx(input_dir, export_dir)
   
@@ -91,6 +91,16 @@ if (FALSE)
   labor <- import_labor(files, export_dir = export_dir)
   
   labor_list <- import_labor(files, export_dir = export_dir, func = read_bwb_data)
+  
+  indices <- which(sapply(labor_list, inherits, "try-error"))
+  
+  # for (file in files[indices]) {
+  # try(expr = read_bwb_data(file))
+  # }
+  files_with_problems <- files[indeces]
+  file <- files_with_problems[1]
+  read_bwb_data(file)
+  kwb.utils::hsOpenWindowsExplorer(file)
   
   output_files <- file.path(export_dir, c(
     "read_bwb_data_Rconsole.txt", 
