@@ -1,5 +1,3 @@
-library(fs)
-
 copy_xlsx_files <- function(
   from_dir, to_dir, overwrite = FALSE, recursive = TRUE,
   file_pattern = "[xX][lL][sS][xX]"

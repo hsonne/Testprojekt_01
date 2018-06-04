@@ -31,7 +31,7 @@ read_bwb_header1_meta <- function(
   all_metadata <- readxl::read_excel(file, meta_sheet)
   
   # Get the names of the sheets for which metadata are available
-  described_sheets <- unique(kwb.utils::selectColumns(metadata, "Sheet"))
+  described_sheets <- unique(kwb.utils::selectColumns(all_metadata, "Sheet"))
   
   # Loop through the names of the sheets for which metadata are available  
   sheet_data_list <- lapply(described_sheets, function(sheet) {
