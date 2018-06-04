@@ -1,5 +1,7 @@
 # Install packages from github
 #devtools::install_github("kwb-r/kwb.utils")
+#devtools::install_github("kwb-r/kwb.event")
+#devtools::install_github("kwb-r/kwb.fakin")
 
 library(kwb.utils)
 
