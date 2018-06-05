@@ -24,7 +24,7 @@ export_table_metadata <- function(tables, dbg = TRUE)
 
   kwb.utils::catIf(dbg, sprintf("Writing table medatada to '%s'... ", file_csv))
   
-  utils::write.csv2(table_info, file = file_csv, row.names = FALSE, na = "")
+  utils::write.csv(table_info, file = file_csv, row.names = FALSE, na = "")
   
   kwb.utils::catIf(dbg, "ok.\n")
 }
@@ -36,11 +36,17 @@ import_table_metadata <- function(file)
 
   if (file.exists(file_csv)) {
     
-    utils::read.csv2(file_csv)
+    cat(sprintf(
+      "  Reading table metadata from\n    '%s'... ", basename(file_csv)
+    ))
+    
+    utils::read.csv(file_csv, stringsAsFactors = FALSE)
+    
+    cat(sprintf("ok.\n"))
     
   } else {
     
-    cat(sprintf("No metadata available for '%s'.\n", file))
+    cat(sprintf("  No metadata available for\n    '%s'.\n", basename(file)))
     
     NULL
   }
