@@ -41,8 +41,13 @@ if (FALSE)
   # 6 table_06              15   16        41       55         1       16
   
   # Get all tables from one file
-  tables <- get_tables_from_xlsx(file = files[1])
+  tables <- get_tables_from_xlsx(file = files[5])
 
+  # Write table metadata to "<basename>_META.csv"
+  export_table_metadata(tables)
+  
+  table_info <- import_table_metadata(files[5])
+  
   # Get all tables from all files
   system.time(all_tables <- lapply(files, get_tables_from_xlsx))
 

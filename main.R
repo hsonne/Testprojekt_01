@@ -27,6 +27,7 @@ script_paths <- file.path("./R", c(
   "file_database.R",
   "get_raw_text_from_xlsx.R",
   "get_tables_from_xlsx.R",
+  "metadata.R",
   "print_table_summary.R",
   "read_bwb_data.R",
   "utils.R"
@@ -50,10 +51,10 @@ paths <- list(
   home = get_homedir()
 )
 
-paths <- resolve(paths, drive = "drive_jeansen")
+paths <- resolve(paths, drive = "drive_hauke_home")
 
 # Set input directory
-input_dir <- safePath(selectElements(paths, "input_dir"))
+#input_dir <- safePath(selectElements(paths, "input_dir"))
 
 # Set directory in which to provide all xlsx files
 export_dir <- safePath(selectElements(paths, "export_dir"))
