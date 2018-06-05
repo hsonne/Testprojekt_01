@@ -41,8 +41,11 @@ if (FALSE)
   # 6 table_06              15   16        41       55         1       16
   
   # Get all tables from one file
-  tables <- get_tables_from_xlsx(file = files[5])
+  tables <- get_tables_from_xlsx(file = files[1])
 
+  # Create column metadata from the table headers
+  column_info <- create_column_metadata(tables)
+  
   # Write table metadata to "<basename>_META.csv"
   export_table_metadata(tables)
   
