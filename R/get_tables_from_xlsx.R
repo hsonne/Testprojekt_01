@@ -1,5 +1,5 @@
 # get_tables_from_xlsx ---------------------------------------------------------
-get_tables_from_xlsx <- function(file)
+get_tables_from_xlsx <- function(file, table_info = import_table_metadata(file))
 {
   # Get one character matrix per sheet
   text_sheets <- get_raw_text_from_xlsx(file)
@@ -16,21 +16,12 @@ get_tables_from_xlsx <- function(file)
     )
   }
   
-  all_tables <- lapply(text_sheets[! is_empty], function(text_sheet) {
-    
-    #text_sheet <- text_sheets[[1]]
-    tables <- split_into_tables(text_sheet)
-    
-    if (length(tables) > 1 && length(tables[[1]]) == 1) {
-      
-      name_even_tables_by_odd_tables(tables)
-      
-    } else {
-      
-      tables
-    }
-  })
-
+  all_tables <- split_into_tables_and_name(
+    text_sheets, 
+    sheet_names = sheet_info$sheet_name,
+    indices = which(! is_empty)
+  )
+  
   table_infos <- lapply(all_tables, kwb.utils::getAttribute, "tables")
   
   table_info <- merge_table_infos(table_infos)
@@ -38,6 +29,33 @@ get_tables_from_xlsx <- function(file)
   all_tables <- stats::setNames(do.call(c, all_tables), table_info$table_id)
   
   structure(all_tables, tables = table_info, sheets = sheet_info, file = file)
+}
+
+# split_into_tables_and_name ---------------------------------------------------
+split_into_tables_and_name <- function(text_sheets, sheet_names, indices)
+{
+  lapply(indices, function(i) {
+    
+    text_sheet <- text_sheets[[i]]
+    
+    #text_sheet <- text_sheets[[1]]
+    tables <- split_into_tables(text_sheet)
+    
+    n_tables <- length(tables)
+    
+    if (length(tables) > 1 && length(tables[[1]]) == 1) {
+      
+      tables <- name_even_tables_by_odd_tables(tables)
+    }
+    
+    # If the number of tables did noth change, they still need to be named
+    if (length(tables) == n_tables) {
+      
+      tables <- name_tables_by_sheet_and_number(tables, sheet = sheet_names[i])
+    }
+    
+    tables
+  })
 }
 
 # split_into_tables ------------------------------------------------------------
@@ -75,7 +93,7 @@ split_into_tables <- function(text_sheet, delete_all_empty_columns = FALSE)
   
   names(tables) <- table_info$table_id
   
-  structure(tables, tables = table_info)
+  structure(tables, tables = table_info, class = "xls_tables")
 }
 
 # extend_table_info ------------------------------------------------------------
@@ -102,10 +120,8 @@ extend_table_info <- function(table_info, tables)
 # name_even_tables_by_odd_tables -----------------------------------------------
 name_even_tables_by_odd_tables <- function(tables)
 {
-  stopifnot(is.list(tables))
-  
-  stopifnot(all(sapply(tables, is.matrix)))
-  
+  stopifnot(inherits(tables, "xls_tables"))
+
   table_info <- kwb.utils::getAttribute(tables, "tables")
 
   sizes <- sapply(tables, length)
@@ -147,10 +163,31 @@ name_even_tables_by_odd_tables <- function(tables)
   }
 }
 
+# name_tables_by_sheet_and_number ----------------------------------------------
+name_tables_by_sheet_and_number <- function(tables, sheet) 
+{
+  stopifnot(inherits(tables, "xls_tables"))
+  
+  table_info <- kwb.utils::getAttribute(tables, "tables")
+  
+  table_info$table_name <- if (length(tables) == 1) {
+
+    sheet
+    
+  } else {
+    
+    add_hex_postfix(tables, base_name = sheet)
+  }
+  
+  structure(tables, tables = table_info)
+}
+
 # merge_table_infos ------------------------------------------------------------
 merge_table_infos <- function(table_infos)
 {
-  table_info <- kwb.utils::rbindAll(table_infos, nameColumn = "sheet_id")
+  table_info <- kwb.utils::rbindAll(
+    table_infos, nameColumn = "sheet_id", namesAsFactor = FALSE
+  )
   
   extract_hex <- function(x) stringr::str_extract(x, "[0-9a-f]+$")
   
