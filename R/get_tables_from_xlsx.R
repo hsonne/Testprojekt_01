@@ -27,13 +27,13 @@ get_tables_from_xlsx <- function(file, table_info = import_table_metadata(file))
     table_infos <- lapply(all_tables, kwb.utils::getAttribute, "tables")
     
     table_info <- merge_table_infos(table_infos)
+
+    all_tables <- stats::setNames(do.call(c, all_tables), table_info$table_id)
     
   } else {
     
     all_tables <- extract_tables_from_ranges(text_sheets, table_info)
   }
-  
-  all_tables <- stats::setNames(do.call(c, all_tables), table_info$table_id)
   
   structure(all_tables, tables = table_info, sheets = sheet_info, file = file)
 }
