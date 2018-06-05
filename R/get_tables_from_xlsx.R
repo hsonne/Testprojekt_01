@@ -16,15 +16,22 @@ get_tables_from_xlsx <- function(file, table_info = import_table_metadata(file))
     )
   }
   
-  all_tables <- split_into_tables_and_name(
-    text_sheets, 
-    sheet_names = sheet_info$sheet_name,
-    indices = which(! is_empty)
-  )
+  if (is.null(table_info)) {
+
+    all_tables <- split_into_tables_and_name(
+      text_sheets, 
+      sheet_names = sheet_info$sheet_name,
+      indices = which(! is_empty)
+    )
   
-  table_infos <- lapply(all_tables, kwb.utils::getAttribute, "tables")
-  
-  table_info <- merge_table_infos(table_infos)
+    table_infos <- lapply(all_tables, kwb.utils::getAttribute, "tables")
+    
+    table_info <- merge_table_infos(table_infos)
+    
+  } else {
+    
+    all_tables <- extract_tables_from_ranges(text_sheets, table_info)
+  }
   
   all_tables <- stats::setNames(do.call(c, all_tables), table_info$table_id)
   
@@ -48,7 +55,7 @@ split_into_tables_and_name <- function(text_sheets, sheet_names, indices)
       tables <- name_even_tables_by_odd_tables(tables)
     }
     
-    # If the number of tables did noth change, they still need to be named
+    # If the number of tables did not change, they still need to be named
     if (length(tables) == n_tables) {
       
       tables <- name_tables_by_sheet_and_number(tables, sheet = sheet_names[i])
@@ -198,4 +205,31 @@ merge_table_infos <- function(table_infos)
   )
   
   kwb.utils::moveColumnsToFront(table_info, c("table_id", "sheet_id"))
+}
+
+# extract_tables_from_ranges ---------------------------------------------------
+extract_tables_from_ranges <- function(text_sheets, table_info)
+{
+  get_col <- kwb.utils::selectColumns
+  
+  get_ele <- kwb.utils::selectElements
+  
+  selected <- kwb.utils::isNaOrEmpty(get_col(table_info, "skip"))
+  
+  table_info <- table_info[selected, ]
+  
+  tables <- lapply(seq_len(nrow(table_info)), function(i) {
+    
+    sheet_id <- as.character(get_col(table_info, "sheet_id")[i])
+    
+    sheet_rows <- get_ele(text_sheets, sheet_id)
+    
+    row_range <- seq(table_info$first_row[i], table_info$last_row[i])
+    
+    col_range <- seq(table_info$first_col[i], table_info$last_col[i])
+    
+    table_matrix <- sheet_rows[row_range, col_range, drop = FALSE]
+  })
+
+  stats::setNames(tables, get_col(table_info, "table_id"))
 }
