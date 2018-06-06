@@ -1,5 +1,7 @@
-# get_tables_from_xlsx ---------------------------------------------------------
-get_tables_from_xlsx <- function(file, table_info = import_table_metadata(file))
+# get_text_tables_from_xlsx ----------------------------------------------------
+get_text_tables_from_xlsx <- function(
+  file, table_info = import_table_metadata(file)
+)
 {
   # Get one character matrix per sheet
   text_sheets <- get_raw_text_from_xlsx(file)
@@ -66,7 +68,7 @@ split_into_tables_and_name <- function(text_sheets, sheet_names, indices)
 }
 
 # split_into_tables ------------------------------------------------------------
-split_into_tables <- function(text_sheet, delete_all_empty_columns = FALSE)
+split_into_tables <- function(text_sheet, delete_all_empty_columns = TRUE)
 {
   stopifnot(is.character(text_sheet), length(dim(text_sheet)) == 2)
   
