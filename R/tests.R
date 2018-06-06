@@ -41,8 +41,12 @@ if (FALSE)
   # 6 table_06              15   16        41       55         1       16
   
   # Get all tables from one file
-  tables <- get_tables_from_xlsx(file = files[1])
+  tables <- get_text_tables_from_xlsx(file = files[1])
 
+  # Convert text matrices of known format
+  selected <- grepl("^table_02_", names(tables))
+  tables_year_well <- lapply(tables[selected], text_matrix_to_numeric_matrix)
+  
   # Create column metadata from the table headers
   column_info <- create_column_metadata(tables)
   
@@ -52,7 +56,7 @@ if (FALSE)
   table_info <- import_table_metadata(files[5])
   
   # Get all tables from all files
-  system.time(all_tables <- lapply(files, get_tables_from_xlsx))
+  system.time(all_tables <- lapply(files, get_text_tables_from_xlsx))
 
   #   user  system elapsed 
   # 41.636   2.516  45.321 
@@ -185,4 +189,16 @@ print_logical_matrix <- function(x, invert = FALSE)
   y[x] <- "x"
   
   kwb.utils::catLines(kwb.utils::pasteColumns(as.data.frame(y), sep = "|"))
+}
+
+# text_matrix_to_numeric_matrix ------------------------------------------------
+text_matrix_to_numeric_matrix <- function(x)
+{
+  print(x)
+  
+  matrix(
+    as.numeric(x[-1, -1]), 
+    nrow = nrow(x) - 1, 
+    dimnames = list(x[-1, 1], x[1, -1])
+  )
 }
