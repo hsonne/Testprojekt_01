@@ -147,4 +147,5 @@ if (FALSE)
   
   # Tests
   read_bwb_header2(file = files[1])
+
 }
