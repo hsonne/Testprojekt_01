@@ -14,7 +14,9 @@ export_table_metadata <- function(table_info, dbg = TRUE)
   
   file_csv <- paste0(kwb.utils::removeExtension(file_xlsx), "_META_tmp.csv")
 
-  debug_formatted(dbg, "Writing table medatada to '%s'... ", file_csv)
+  debug_formatted(dbg, "Writing table medatada to ... ")
+
+  debug_file(dbg, file_csv)
   
   utils::write.csv(table_info, file = file_csv, row.names = FALSE, na = "")
   
@@ -22,23 +24,23 @@ export_table_metadata <- function(table_info, dbg = TRUE)
 }
 
 # import_table_metadata --------------------------------------------------------
-import_table_metadata <- function(file)
+import_table_metadata <- function(file, dbg = TRUE)
 {
   file_csv <- paste0(kwb.utils::removeExtension(file), "_META.csv")
 
   if (file.exists(file_csv)) {
     
-    cat(sprintf(
-      "  Reading table metadata from\n    '%s'... ", basename(file_csv)
-    ))
+    debug_formatted(
+      dbg, "Reading table metadata from\n    '%s' ... ", basename(file_csv)
+    )
     
     table_info <- utils::read.csv(file_csv, stringsAsFactors = FALSE)
     
-    cat(sprintf("ok.\n"))
+    debug_ok(dbg)
     
   } else {
     
-    cat(sprintf("  No metadata available for\n    '%s'.\n", basename(file)))
+    debug_formatted(dbg, "No metadata file found for this Excel file.\n")
     
     table_info <- NULL
   }
@@ -48,11 +50,11 @@ import_table_metadata <- function(file)
 
 # create_column_metadata -------------------------------------------------------
 create_column_metadata <- function(
-  tables, table_info = attr(tables, "tables"), dbg = TRUE
+  tables, table_info = attr(tables, "table_info"), dbg = TRUE
 )
 {
   if (FALSE) {
-    table_info = attr(tables, "tables"); dbg = TRUE
+    table_info = attr(tables, "table_info"); dbg = TRUE
   }
   
   get_col <- kwb.utils::selectColumns
@@ -61,7 +63,7 @@ create_column_metadata <- function(
     
     stop_formatted(
       "%s\n%s", 
-      "No metadata on tables given in table_info and no attribute 'tables'",
+      "No metadata on tables given in table_info and no attribute 'table_info'",
       "available."
     )
   }
@@ -88,14 +90,16 @@ create_column_metadata <- function(
       header_matrix, table_id, col_types
     )
     
-    cat("ok.\n")
+    debug_ok(dbg)
     
     column_info
   })
   
-  cat("Safe row bind all... ")
+  debug_formatted(dbg, "Row-binding column info tables ... ")
+  
   column_info <- kwb.utils::safeRowBindAll(column_infos)
-  cat("ok.\n")
+  
+  debug_ok(dbg)
   
   column_info
 }

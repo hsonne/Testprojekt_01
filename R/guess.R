@@ -1,11 +1,15 @@
 # guess_number_of_headers_from_text_matrix -------------------------------------
-guess_number_of_headers_from_text_matrix <- function(x, method = 2, dbg = TRUE)
+guess_number_of_headers_from_text_matrix <- function(
+  x, table_id, method = 2, dbg = TRUE
+)
 {
   if (FALSE) {
     method = 2; dbg = TRUE
   }
   
-  debug_formatted(dbg, "\nGuessing number of header rows... ")
+  debug_formatted(
+    dbg, "\nGuessing number of header rows in '%s' ... ", table_id
+  )
   
   type_matrix <- get_type_matrix_from_text_matrix(x)
   

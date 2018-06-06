@@ -22,7 +22,7 @@ get_raw_text_from_xlsx <- function(file, sheet = NULL, dbg = TRUE)
     names(result) <- kwb.utils::selectColumns(sheet_table, "sheet_id")
     
     # Set the sheet metadata as an attribute
-    structure(result, sheets = sheet_table)
+    structure(result, sheet_info = sheet_table)
     
   } else {
 
@@ -33,7 +33,7 @@ get_raw_text_from_xlsx <- function(file, sheet = NULL, dbg = TRUE)
     # so that the original row numbers can be used as a reference
     range <- cellranger::cell_rows(c(1, NA))
     
-    debug_formatted(dbg, "  Reading sheet '%s' ... ", sheet)
+    debug_formatted(dbg, "Reading sheet '%s' as raw text ... ", sheet)
     
     result <- as.matrix(readxl::read_xlsx(
       file, sheet, range = range, col_names = FALSE, col_types = "text"
@@ -50,9 +50,12 @@ get_raw_text_from_xlsx <- function(file, sheet = NULL, dbg = TRUE)
 # debug_file -------------------------------------------------------------------
 debug_file <- function(dbg, file)
 {
-  debug_formatted(dbg, "\nFile: '%s'\n", basename(file))
-  
-  debug_formatted(dbg, "Folder: '%s'\n", dirname(file))
+  if (dbg) {
+
+    cat_green_bold_0(sprintf("\n  File: '%s'\n", basename(file)))
+    
+    cat(sprintf("Folder: '%s'\n", dirname(file)))
+  }
 }
 
 # debug_formatted --------------------------------------------------------------

@@ -6,45 +6,11 @@ library(testthat)
 # M A I N ----------------------------------------------------------------------
 if (FALSE)
 {
-  text_sheets <- get_raw_text_from_xlsx(file = files[1])
-  
-  expect_named(text_sheets)
-  expect_true(all(grepl("^sheet_", names(text_sheets))))
-  expect_true(! is.null(attr(text_sheets, "sheets")))
-  
-  # attr(text_sheets, "sheets")
-  #   sheet_id            sheet_name
-  # 1 sheet_01     Einzelwerte Liste
-  # 2 sheet_02 Kreuztab Jahresmittel
-  # 3 sheet_03                  Test
-  
-  tables_list <- list(
-    split_into_tables(text_sheet <- text_sheets$sheet_01),
-    split_into_tables(text_sheet <- text_sheets$sheet_02),
-    split_into_tables(text_sheet <- text_sheets$sheet_03)
-  )
-  
-  for (tables in tables_list) {
-    
-    expect_named(tables)
-    expect_true(all(grepl("^table_", names(tables))))
-    expect_true(! is.null(attr(tables, "tables")))
-  }
-  
-  # head(attr(tables_list[[2]], "tables")[, -9])
-  #   table_id table_name nrow ncol first_row last_row first_col last_col
-  # 1 table_01               1    1         2        2         1        1 
-  # 2 table_02              14   19         4       17         1       19
-  # 3 table_03               1    1        19       19         1        1
-  # 4 table_04              17   34        21       37         1       34
-  # 5 table_05               1    1        39       39         1        1
-  # 6 table_06              15   16        41       55         1       16
-  
   # Get all tables from one file
-  tables <- get_text_tables_from_xlsx(file = files[8])
+  tables <- get_text_tables_from_xlsx(file = files[1])
 
   # Get table metadata
-  table_info <- kwb.utils::getAttribute(tables, "tables")
+  table_info <- kwb.utils::getAttribute(tables, "table_info")
   
   # Create column metadata from the table headers
   column_info <- create_column_metadata(tables)
@@ -58,12 +24,16 @@ if (FALSE)
     structure(table_info, file = kwb.utils::getAttribute(tables, "file"))
   )
   
-  table_info <- import_table_metadata(files[5])
+  import_table_metadata(files[5])
 
   # Create list representing a file database
   file_db <- to_file_database(files)
   
+  # Select all file indices Change indices to test with less files
   indices <- seq_along(files)
+
+  # Clear the screen
+  kwb.utils::clearConsole()  
   
   # Get all tables from all files
   system.time(all_tables <- lapply(files[indices], get_text_tables_from_xlsx))
@@ -100,7 +70,11 @@ if (FALSE)
   
   column_info$file <- files[column_info$file_index]
   
-  guess_number_of_headers_from_text_matrix(x <- all_tables[[1]]$table_03_01)
+  table_id <- "table_03_01"
+  
+  guess_number_of_headers_from_text_matrix(
+    (x <- all_tables[[1]][[table_id]]), table_id = table_id
+  )
 
   head(x, 3)
   
@@ -118,10 +92,10 @@ if (FALSE)
   tables <- all_tables[[1]]
   
   # Get a description of the sheets in that file
-  kwb.utils::getAttribute(tables, "sheets")
+  kwb.utils::getAttribute(tables, "sheet_info")
   
   # Get a description of tables in that file
-  kwb.utils::getAttribute(tables, "tables")
+  kwb.utils::getAttribute(tables, "table_info")
 
   # Get the name of the file that was read
   kwb.utils::getAttribute(tables, "file")
@@ -132,7 +106,12 @@ if (FALSE)
   # "table_01_01" "table_02_01"
 
   # Try to guess the header rows for each table...
-  n_headers <- sapply(tables, guess_number_of_headers_from_text_matrix)
+  n_headers <- sapply(names(tables), function(table_id) {
+    
+    guess_number_of_headers_from_text_matrix(
+      tables[[table_id]], table_id = table_id
+    )
+  })
 
   print_logical_matrix(guess_header_matrix(x = tables$table_01_01, n_max))
   print_logical_matrix(guess_header_matrix(x = tables$table_02_01, n_max))
@@ -166,15 +145,17 @@ if (FALSE)
 }
 
 # print_header_guesses ---------------------------------------------------------
-print_header_guesses <- function(text_matrices, n_max = 5, file = NULL)
+print_header_guesses <- function(
+  text_matrices, n_max = 5, file = NULL, dbg = TRUE
+)
 {
   if (! is.null(file)) {
   
-    cat(sprintf("Writing output to '%s'... ", file))
+    debug_formatted(dbg, "Writing output to '%s'... ", file)
     
     capture.output(file = file, print_header_guesses(text_matrices, n_max))
     
-    cat("ok.\n")
+    debug_ok(dbg)
     
   } else {
     
@@ -184,7 +165,7 @@ print_header_guesses <- function(text_matrices, n_max = 5, file = NULL)
       
       header <- guess_header_matrix(x = text_matrices[[matrix_name]], n_max)
       
-      cat(sprintf("\n%s:\n", matrix_name))
+      debug_formatted(dbg, "\n%s:\n", matrix_name)
       
       print_logical_matrix(header)
     }
@@ -237,3 +218,44 @@ text_matrix_to_numeric_matrix <- function(x)
     dimnames = list(x[-1, 1], x[1, -1])
   )
 }
+
+test_that("get_raw_text_from_xlsx() works as expected", {
+  
+  text_sheets <<- get_raw_text_from_xlsx(file = files[1])
+  
+  expect_named(text_sheets)
+  
+  expect_true(all(grepl("^sheet_", names(text_sheets))))
+  
+  sheet_info <- attr(text_sheets, "sheet_info")
+  
+  expect_false(is.null(sheet_info))
+  
+  expect_true(all(c("sheet_id", "sheet_name") %in% names(sheet_info)))
+})
+
+test_that("split_into_tables() works as expected", {
+  
+  tables_list <- list(
+    split_into_tables(text_sheets$sheet_01),
+    split_into_tables(text_sheets$sheet_02),
+    split_into_tables(text_sheets$sheet_03)
+  )
+  
+  for (tables in tables_list) {
+    
+    expect_named(tables)
+    expect_true(all(grepl("^table_", names(tables))))
+    
+    table_info <- attr(tables, "table_info")
+    
+    expect_false(is.null(table_info))
+    
+    columns <- c(
+      "table_id", "table_name", "first_row", "last_row", "first_col", 
+      "last_col", "n_headers"
+    )
+    
+    expect_true(all(columns %in% names(table_info)))
+  }
+})
