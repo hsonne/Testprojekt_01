@@ -51,6 +51,10 @@ create_column_metadata <- function(
   tables, table_info = attr(tables, "tables"), dbg = TRUE
 )
 {
+  if (FALSE) {
+    table_info = attr(tables, "tables"); dbg = TRUE
+  }
+  
   get_col <- kwb.utils::selectColumns
     
   if (is.null(table_info)) {
@@ -76,17 +80,13 @@ create_column_metadata <- function(
     
     n_headers <- get_col(table_info, "n_headers")[selected]
  
-    if (is.na(n_headers)) {
-      
-      n_headers <- guess_number_of_headers_from_text_matrix(table_content)
-    }   
-#    n_headers <- kwb.utils::defaultIfNA(n_headers, 1)
-    
-#    n_headers <- min(c(n_headers, nrow(table_content)))
-    
+    col_types <- get_col(table_info, "col_types")[selected]
+
     header_matrix <- table_content[seq_len(n_headers), , drop = FALSE]
     
-    column_info <- header_matrix_to_column_info(header_matrix, table_id)
+    column_info <- header_matrix_to_column_info(
+      header_matrix, table_id, col_types
+    )
     
     cat("ok.\n")
     
@@ -101,15 +101,15 @@ create_column_metadata <- function(
 }
 
 # header_matrix_to_column_info -------------------------------------------------
-header_matrix_to_column_info <- function(header_rows, table_id)
+header_matrix_to_column_info <- function(header_matrix, table_id, col_types)
 {
-  kwb.utils::stopIfNotMatrix(header_rows)
+  kwb.utils::stopIfNotMatrix(header_matrix)
   
-  n_headers <- nrow(header_rows)
+  n_headers <- nrow(header_matrix)
   
-  n_columns <- ncol(header_rows)
+  n_columns <- ncol(header_matrix)
   
-  header_parts <- as.data.frame(t(header_rows), stringsAsFactors = FALSE)
+  header_parts <- as.data.frame(t(header_matrix), stringsAsFactors = FALSE)
   
   header_parts[is.na(header_parts)] <- ""
   
@@ -117,8 +117,14 @@ header_matrix_to_column_info <- function(header_rows, table_id)
     table_id = table_id,
     column_no = seq_len(n_columns),
     column_names_old = kwb.utils::pasteColumns(header_parts, sep = "|"),
-    column_name = sprintf("ColumnName_%03d", seq_len(n_columns))
+    column_name = sprintf("Column_%03d", seq_len(n_columns))
   )
+
+  column_types <- strsplit(col_types, "\\|")[[1]]
   
+  stopifnot(length(column_types) == n_columns)
+  
+  column_info$column_type <- column_types
+
   kwb.utils::resetRowNames(column_info)
 }

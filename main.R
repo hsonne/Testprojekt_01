@@ -25,6 +25,7 @@ if (length(missing_packages)) {
 # Define paths to scripts with functions
 script_paths <- file.path("./R", c(
   "convert_xls_as_xlsx.R",
+  "convert_to_data_frames.R",
   "copy_xlsx_files.R",
   "file_database.R",
   "get_raw_text_from_xlsx.R",

@@ -3,6 +3,10 @@ get_text_tables_from_xlsx <- function(
   file, table_info = import_table_metadata(file), guess_headers = TRUE
 )
 {
+  if (FALSE) {
+    table_info = import_table_metadata(file); guess_headers = TRUE
+  }
+  
   # Get one character matrix per sheet
   text_sheets <- get_raw_text_from_xlsx(file)
 
@@ -39,9 +43,18 @@ get_text_tables_from_xlsx <- function(
 
   if (isTRUE(guess_headers)) {
   
-    table_info$n_headers <- sapply(
-      all_tables, guess_number_of_headers_from_text_matrix
-    )
+    n_headers_list <- lapply(names(all_tables), function(table_id) {
+      
+      print(table_id)
+      #table_id <- names(all_tables)[2]
+      guess_number_of_headers_from_text_matrix(x = all_tables[[table_id]])
+    })
+    
+    table_info$n_headers <- unlist(n_headers_list)
+    
+    table_info$col_types <- sapply(n_headers_list, function(x) {
+      kwb.utils::collapsed(kwb.utils::getAttribute(x, "col_types"), "|")
+    })
   }
   
   structure(all_tables, tables = table_info, sheets = sheet_info, file = file)
@@ -52,9 +65,6 @@ split_into_tables_and_name <- function(text_sheets, sheet_names, indices)
 {
   lapply(indices, function(i) {
 
-    print(i)
-    #i <- 1
-    
     text_sheet <- text_sheets[[i]]
     
     tables <- split_into_tables(text_sheet)

@@ -41,7 +41,7 @@ if (FALSE)
   # 6 table_06              15   16        41       55         1       16
   
   # Get all tables from one file
-  tables <- get_text_tables_from_xlsx(file = files[3])
+  tables <- get_text_tables_from_xlsx(file = files[8])
 
   # Get table metadata
   table_info <- kwb.utils::getAttribute(tables, "tables")
@@ -59,12 +59,46 @@ if (FALSE)
   )
   
   table_info <- import_table_metadata(files[5])
+
+  # Create list representing a file database
+  file_db <- to_file_database(files)
+  
+  indices <- seq_along(files)
   
   # Get all tables from all files
-  system.time(all_tables <- lapply(files, get_text_tables_from_xlsx))
+  system.time(all_tables <- lapply(files[indices], get_text_tables_from_xlsx))
 
-  # user  system elapsed 
-  # 56.032   2.956  60.431
+  #    user  system elapsed 
+  # 118.868   3.316 123.309 
+
+  names(all_tables) <- file_db$files$file_id[indices]
+  
+  # Create column metadata for all tables
+  column_info_list <- lapply(all_tables, create_column_metadata)
+  
+  column_info <- rbindAll(
+    column_info_list, nameColumn = "file_id", namesAsFactor = FALSE
+  )
+  
+  column_info <- merge(column_info, file_database$files)
+  column_info <- merge(column_info, file_database$folders)
+  base_dir <- getAttribute(file_database$folders, "base_dir")
+  
+  file_metadata <- file.path(base_dir, "METADATA_columns_tmp.csv")
+
+  write.csv(column_info, file_metadata, row.names = FALSE)
+
+  # TODO: Copy METADATA_columns_tmp.csv to METADATA_columns.csv, let the user
+  # modify the file and read back into column_info
+  #
+  # column_info <- read_column_info(safePath(base_dir, "METADATA_columns.csv"))
+
+  # Use column info to convert the text tables into data frames
+  all_data <- convert_text_matrix_list_to_data_frames(all_tables, column_info)
+  
+  file_db$files$file_id
+  
+  column_info$file <- files[column_info$file_index]
   
   guess_number_of_headers_from_text_matrix(x <- all_tables[[1]]$table_03_01)
 
