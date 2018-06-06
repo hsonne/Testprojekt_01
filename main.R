@@ -1,12 +1,14 @@
 # Install packages from github
 #devtools::install_github("kwb-r/kwb.utils")
+#devtools::install_github("kwb-r/kwb.fakin")
+#devtools::install_github("kwb-r/kwb.event")
 
 library(kwb.utils)
 
 # Names of required packages in alphabetical order
 packages <- c(
   "crayon", "data.table", "devtools", "dplyr", "fs", "readxl", "stringr",
-  "tidyr"
+  "testthat", "tidyr"
 )
 
 # Names of installed packages
