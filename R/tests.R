@@ -41,14 +41,35 @@ if (FALSE)
   # 6 table_06              15   16        41       55         1       16
   
   # Get all tables from one file
-  tables <- get_tables_from_xlsx(file = files[1])
+  tables <- get_text_tables_from_xlsx(file = files[3])
 
+  # Get table metadata
+  table_info <- kwb.utils::getAttribute(tables, "tables")
+  
+  # Create column metadata from the table headers
+  column_info <- create_column_metadata(tables)
+
+  # Add column "skip": If the user puts an "x" into this column, the 
+  # corresponding table will not be imported.
+  table_info$skip <- ""
+
+  # Write table metadata to "<basename>_META.csv"
+  export_table_metadata(
+    structure(table_info, file = kwb.utils::getAttribute(tables, "file"))
+  )
+  
+  table_info <- import_table_metadata(files[5])
+  
   # Get all tables from all files
-  system.time(all_tables <- lapply(files, get_tables_from_xlsx))
+  system.time(all_tables <- lapply(files, get_text_tables_from_xlsx))
 
-  #   user  system elapsed 
-  # 41.636   2.516  45.321 
+  # user  system elapsed 
+  # 56.032   2.956  60.431
+  
+  guess_number_of_headers_from_text_matrix(x <- all_tables[[1]]$table_03_01)
 
+  head(x, 3)
+  
   # Get the path to a log file  
   logfile_summary <- tempfile("table_summary_", fileext = ".txt")
   logfile_headers <- tempfile("table_headers_", fileext = ".txt")
@@ -72,21 +93,13 @@ if (FALSE)
   kwb.utils::getAttribute(tables, "file")
   
   # The tables are named by sheet number and table number within the sheet
-  # The numbers are hexadecimal, i.e a = 10, f = 16, ff = 255, 
+  # The numbers are hexadecimal, i.e a = 10, f = 15, 10 = 16, ff = 255, 
   names(tables)
   # "table_01_01" "table_02_01"
 
   # Try to guess the header rows for each table...
-  n_max <- 4
-  
-  guess_number_of_header_rows(x = tables$table_01_01)
-  guess_number_of_header_rows(x = tables$table_01_02)
-  guess_number_of_header_rows(x = tables$table_02_01)
-  guess_number_of_header_rows(x = tables$table_03_01)
-  guess_number_of_header_rows(x = tables$table_04_01)
-  guess_number_of_header_rows(x = tables$table_04_02)
-  guess_number_of_header_rows(x = tables$table_04_03)
-  
+  n_headers <- sapply(tables, guess_number_of_headers_from_text_matrix)
+
   print_logical_matrix(guess_header_matrix(x = tables$table_01_01, n_max))
   print_logical_matrix(guess_header_matrix(x = tables$table_02_01, n_max))
 
@@ -102,20 +115,20 @@ if (FALSE)
   print_logical_matrix(head(is_empty), invert = TRUE)
 }
 
-# guess_number_of_header_rows --------------------------------------------------
-guess_number_of_header_rows <- function(x, n_max = 10)
+# Text Matrices to data frames -------------------------------------------------
+if (FALSE)
 {
-  stopifnot(is.character(x))
+  # Convert text matrices of known format
+  tables <- get_text_tables_from_xlsx(file = files[1])
   
-  kwb.utils::stopIfNotMatrix(x)
+  selected <- grepl("^table_02_", names(tables))
   
-  header_matrix <- guess_header_matrix(x, n_max = n_max)
-
-  print_logical_matrix(head(header_matrix))
+  tables_year_well <- lapply(tables[selected], text_matrix_to_numeric_matrix)
   
-  ones_per_row <- rowSums(header_matrix)
-
-  kwb.event::hsEventsOnChange(diff(ones_per_row) < 0)[1, 2]
+  data_frames_year_well <- lapply(tables_year_well, as.data.frame)
+  
+  str(data_frames_year_well$table_02_01)
+  str(data_frames_year_well$table_02_02)
 }
 
 # print_header_guesses ---------------------------------------------------------
@@ -177,4 +190,16 @@ print_logical_matrix <- function(x, invert = FALSE)
   y[x] <- "x"
   
   kwb.utils::catLines(kwb.utils::pasteColumns(as.data.frame(y), sep = "|"))
+}
+
+# text_matrix_to_numeric_matrix ------------------------------------------------
+text_matrix_to_numeric_matrix <- function(x)
+{
+  print(x)
+  
+  matrix(
+    as.numeric(x[-1, -1]), 
+    nrow = nrow(x) - 1, 
+    dimnames = list(x[-1, 1], x[1, -1])
+  )
 }

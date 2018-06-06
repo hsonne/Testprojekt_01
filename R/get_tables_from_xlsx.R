@@ -1,5 +1,7 @@
-# get_tables_from_xlsx ---------------------------------------------------------
-get_tables_from_xlsx <- function(file)
+# get_text_tables_from_xlsx ----------------------------------------------------
+get_text_tables_from_xlsx <- function(
+  file, table_info = import_table_metadata(file), guess_headers = TRUE
+)
 {
   # Get one character matrix per sheet
   text_sheets <- get_raw_text_from_xlsx(file)
@@ -16,32 +18,66 @@ get_tables_from_xlsx <- function(file)
     )
   }
   
-  all_tables <- lapply(text_sheets[! is_empty], function(text_sheet) {
-    
-    #text_sheet <- text_sheets[[1]]
-    tables <- split_into_tables(text_sheet)
-    
-    if (length(tables) > 1 && length(tables[[1]]) == 1) {
-      
-      name_even_tables_by_odd_tables(tables)
-      
-    } else {
-      
-      tables
-    }
-  })
+  if (is.null(table_info)) {
 
-  table_infos <- lapply(all_tables, kwb.utils::getAttribute, "tables")
+    all_tables <- split_into_tables_and_name(
+      text_sheets, 
+      sheet_names = sheet_info$sheet_name,
+      indices = which(! is_empty)
+    )
   
-  table_info <- merge_table_infos(table_infos)
+    table_infos <- lapply(all_tables, kwb.utils::getAttribute, "tables")
+    
+    table_info <- merge_table_infos(table_infos)
+
+    all_tables <- stats::setNames(do.call(c, all_tables), table_info$table_id)
+    
+  } else {
+    
+    all_tables <- extract_tables_from_ranges(text_sheets, table_info)
+  }
+
+  if (isTRUE(guess_headers)) {
   
-  all_tables <- stats::setNames(do.call(c, all_tables), table_info$table_id)
+    table_info$n_headers <- sapply(
+      all_tables, guess_number_of_headers_from_text_matrix
+    )
+  }
   
   structure(all_tables, tables = table_info, sheets = sheet_info, file = file)
 }
 
+# split_into_tables_and_name ---------------------------------------------------
+split_into_tables_and_name <- function(text_sheets, sheet_names, indices)
+{
+  lapply(indices, function(i) {
+
+    print(i)
+    #i <- 1
+    
+    text_sheet <- text_sheets[[i]]
+    
+    tables <- split_into_tables(text_sheet)
+    
+    n_tables <- length(tables)
+    
+    if (length(tables) > 1 && length(tables[[1]]) == 1) {
+      
+      tables <- name_even_tables_by_odd_tables(tables)
+    }
+    
+    # If the number of tables did not change, they still need to be named
+    if (length(tables) == n_tables) {
+      
+      tables <- name_tables_by_sheet_and_number(tables, sheet = sheet_names[i])
+    }
+    
+    tables
+  })
+}
+
 # split_into_tables ------------------------------------------------------------
-split_into_tables <- function(text_sheet, delete_all_empty_columns = FALSE)
+split_into_tables <- function(text_sheet, delete_all_empty_columns = TRUE)
 {
   stopifnot(is.character(text_sheet), length(dim(text_sheet)) == 2)
   
@@ -75,7 +111,7 @@ split_into_tables <- function(text_sheet, delete_all_empty_columns = FALSE)
   
   names(tables) <- table_info$table_id
   
-  structure(tables, tables = table_info)
+  structure(tables, tables = table_info, class = "xls_tables")
 }
 
 # extend_table_info ------------------------------------------------------------
@@ -88,13 +124,11 @@ extend_table_info <- function(table_info, tables)
       table_id = add_hex_postfix(tables), 
       table_name = ""
     ),
-    nrow = dims[, 1],
-    ncol = dims[, 2],
     first_row = table_info$first_row, 
     last_row = table_info$last_row, 
     first_col = 1, 
     last_col = dims[, 2],
-    topleft = unname(sapply(tables, "[", 1, 1)),
+    n_headers = as.integer(NA),
     stringsAsFactors = FALSE
   )
 }
@@ -102,10 +136,8 @@ extend_table_info <- function(table_info, tables)
 # name_even_tables_by_odd_tables -----------------------------------------------
 name_even_tables_by_odd_tables <- function(tables)
 {
-  stopifnot(is.list(tables))
-  
-  stopifnot(all(sapply(tables, is.matrix)))
-  
+  stopifnot(inherits(tables, "xls_tables"))
+
   table_info <- kwb.utils::getAttribute(tables, "tables")
 
   sizes <- sapply(tables, length)
@@ -131,7 +163,7 @@ name_even_tables_by_odd_tables <- function(tables)
   } else {
     
     # Get captions from one-element tables at odd indices
-    table_info$table_name[even_indices] <- table_info$topleft[odd_indices]
+    table_info$table_name[even_indices] <- unname(unlist(tables[odd_indices]))
     
     # Remove the 1x1 tables from table_info
     table_info <- table_info[even_indices, ]
@@ -147,10 +179,31 @@ name_even_tables_by_odd_tables <- function(tables)
   }
 }
 
+# name_tables_by_sheet_and_number ----------------------------------------------
+name_tables_by_sheet_and_number <- function(tables, sheet) 
+{
+  stopifnot(inherits(tables, "xls_tables"))
+  
+  table_info <- kwb.utils::getAttribute(tables, "tables")
+  
+  table_info$table_name <- if (length(tables) == 1) {
+
+    sheet
+    
+  } else {
+    
+    add_hex_postfix(tables, base_name = sheet)
+  }
+  
+  structure(tables, tables = table_info)
+}
+
 # merge_table_infos ------------------------------------------------------------
 merge_table_infos <- function(table_infos)
 {
-  table_info <- kwb.utils::rbindAll(table_infos, nameColumn = "sheet_id")
+  table_info <- kwb.utils::rbindAll(
+    table_infos, nameColumn = "sheet_id", namesAsFactor = FALSE
+  )
   
   extract_hex <- function(x) stringr::str_extract(x, "[0-9a-f]+$")
   
@@ -161,4 +214,31 @@ merge_table_infos <- function(table_infos)
   )
   
   kwb.utils::moveColumnsToFront(table_info, c("table_id", "sheet_id"))
+}
+
+# extract_tables_from_ranges ---------------------------------------------------
+extract_tables_from_ranges <- function(text_sheets, table_info)
+{
+  get_col <- kwb.utils::selectColumns
+  
+  get_ele <- kwb.utils::selectElements
+  
+  selected <- kwb.utils::isNaOrEmpty(get_col(table_info, "skip"))
+  
+  table_info <- table_info[selected, ]
+  
+  tables <- lapply(seq_len(nrow(table_info)), function(i) {
+    
+    sheet_id <- as.character(get_col(table_info, "sheet_id")[i])
+    
+    sheet_rows <- get_ele(text_sheets, sheet_id)
+    
+    row_range <- seq(table_info$first_row[i], table_info$last_row[i])
+    
+    col_range <- seq(table_info$first_col[i], table_info$last_col[i])
+    
+    table_matrix <- sheet_rows[row_range, col_range, drop = FALSE]
+  })
+
+  stats::setNames(tables, get_col(table_info, "table_id"))
 }
