@@ -29,6 +29,7 @@ script_paths <- file.path("./R", c(
   "file_database.R",
   "get_raw_text_from_xlsx.R",
   "get_tables_from_xlsx.R",
+  "guess.R",
   "metadata.R",
   "print_table_summary.R",
   "read_bwb_data.R",

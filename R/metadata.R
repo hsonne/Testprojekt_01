@@ -4,29 +4,21 @@
 #' 
 #' Export Table Metadata to CSV file 
 #' 
-export_table_metadata <- function(tables, dbg = TRUE)
+export_table_metadata <- function(table_info, dbg = TRUE)
 {
-  table_info <- kwb.utils::getAttribute(tables, "tables")
+  stopifnot(is.data.frame(table_info))
 
-  # Remove column "topleft" and add columns "skip" and "n_headers". 
-  # Column "skip": If the user puts an "x" into this column, the corresponding
-  # table will not be imported.
-  # Column "n_headers": Number of header lines of the corresponding table
-  table_info <-table_info[, names(table_info) != "topleft"]
+  kwb.utils::checkForMissingColumns(table_info, c("table_id", "table_name"))
+  
+  file_xlsx <- kwb.utils::getAttribute(table_info, "file")
+  
+  file_csv <- paste0(kwb.utils::removeExtension(file_xlsx), "_META_tmp.csv")
 
-  table_info$skip <- ""
-  
-  table_info$n_headers <- 1
-  
-  file <- kwb.utils::getAttribute(tables, "file")
-  
-  file_csv <- paste0(kwb.utils::removeExtension(file), "_META_tmp.csv")
-
-  kwb.utils::catIf(dbg, sprintf("Writing table medatada to '%s'... ", file_csv))
+  debug_formatted(dbg, "Writing table medatada to '%s'... ", file_csv)
   
   utils::write.csv(table_info, file = file_csv, row.names = FALSE, na = "")
   
-  kwb.utils::catIf(dbg, "ok.\n")
+  debug_ok(dbg)
 }
 
 # import_table_metadata --------------------------------------------------------
@@ -55,7 +47,9 @@ import_table_metadata <- function(file)
 }
 
 # create_column_metadata -------------------------------------------------------
-create_column_metadata <- function(tables, table_info = attr(tables, "tables"))
+create_column_metadata <- function(
+  tables, table_info = attr(tables, "tables"), dbg = TRUE
+)
 {
   get_col <- kwb.utils::selectColumns
     
@@ -72,15 +66,23 @@ create_column_metadata <- function(tables, table_info = attr(tables, "tables"))
   
     #table_id <- names(tables)[1]
     
-    cat(sprintf("Creating column metadata for table '%s'... ", table_id))
+    debug_formatted(
+      dbg, "Creating column metadata for table '%s'... ", table_id
+    )
 
     table_content <- tables[[table_id]]
     
     selected <- get_col(table_info, "table_id") == table_id
     
     n_headers <- get_col(table_info, "n_headers")[selected]
+ 
+    if (is.na(n_headers)) {
+      
+      n_headers <- guess_number_of_headers_from_text_matrix(table_content)
+    }   
+#    n_headers <- kwb.utils::defaultIfNA(n_headers, 1)
     
-    n_headers <- min(c(n_headers, nrow(table_content)))
+#    n_headers <- min(c(n_headers, nrow(table_content)))
     
     header_matrix <- table_content[seq_len(n_headers), , drop = FALSE]
     
@@ -107,7 +109,9 @@ header_matrix_to_column_info <- function(header_rows, table_id)
   
   n_columns <- ncol(header_rows)
   
-  header_parts <- as.data.frame(t(header_rows))
+  header_parts <- as.data.frame(t(header_rows), stringsAsFactors = FALSE)
+  
+  header_parts[is.na(header_parts)] <- ""
   
   column_info <- no_factors_data_frame(
     table_id = table_id,

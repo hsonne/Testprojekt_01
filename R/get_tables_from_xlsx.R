@@ -1,6 +1,6 @@
 # get_text_tables_from_xlsx ----------------------------------------------------
 get_text_tables_from_xlsx <- function(
-  file, table_info = import_table_metadata(file)
+  file, table_info = import_table_metadata(file), guess_headers = TRUE
 )
 {
   # Get one character matrix per sheet
@@ -36,6 +36,13 @@ get_text_tables_from_xlsx <- function(
     
     all_tables <- extract_tables_from_ranges(text_sheets, table_info)
   }
+
+  if (isTRUE(guess_headers)) {
+  
+    table_info$n_headers <- sapply(
+      all_tables, guess_number_of_headers_from_text_matrix
+    )
+  }
   
   structure(all_tables, tables = table_info, sheets = sheet_info, file = file)
 }
@@ -44,10 +51,12 @@ get_text_tables_from_xlsx <- function(
 split_into_tables_and_name <- function(text_sheets, sheet_names, indices)
 {
   lapply(indices, function(i) {
+
+    print(i)
+    #i <- 1
     
     text_sheet <- text_sheets[[i]]
     
-    #text_sheet <- text_sheets[[1]]
     tables <- split_into_tables(text_sheet)
     
     n_tables <- length(tables)
@@ -115,13 +124,11 @@ extend_table_info <- function(table_info, tables)
       table_id = add_hex_postfix(tables), 
       table_name = ""
     ),
-    nrow = dims[, 1],
-    ncol = dims[, 2],
     first_row = table_info$first_row, 
     last_row = table_info$last_row, 
     first_col = 1, 
     last_col = dims[, 2],
-    topleft = unname(sapply(tables, "[", 1, 1)),
+    n_headers = as.integer(NA),
     stringsAsFactors = FALSE
   )
 }
@@ -156,7 +163,7 @@ name_even_tables_by_odd_tables <- function(tables)
   } else {
     
     # Get captions from one-element tables at odd indices
-    table_info$table_name[even_indices] <- table_info$topleft[odd_indices]
+    table_info$table_name[even_indices] <- unname(unlist(tables[odd_indices]))
     
     # Remove the 1x1 tables from table_info
     table_info <- table_info[even_indices, ]
