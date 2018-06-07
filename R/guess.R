@@ -1,43 +1,61 @@
 # guess_number_of_headers_from_text_matrix -------------------------------------
-guess_number_of_headers_from_text_matrix <- function(x, method = 2, dbg = TRUE)
+guess_number_of_headers_from_text_matrix <- function(
+  x, table_id, method = 2, dbg = TRUE
+)
 {
-  debug_formatted(dbg, "\nGuessing number of header rows... ")
+  if (FALSE) {
+    method = 2; dbg = TRUE
+  }
+  
+  debug_formatted(
+    dbg, "\nGuessing number of header rows in '%s' ... ", table_id
+  )
   
   type_matrix <- get_type_matrix_from_text_matrix(x)
   
-  types <- guess_column_type_from_type_matrix(type_matrix)
+  col_types <- guess_column_type_from_type_matrix(type_matrix)
   
-  indices_numeric <- which(types == "N")
+  indices_numeric <- which(col_types == "N")
 
-  type_matrix_numeric <- type_matrix[, indices_numeric]
-  
-  n_headers <- if (method == 1) {
+  # If there are not columns that seem to be numeric, we give up and return 1
+  n_headers <- if (length(indices_numeric) == 0) {
     
-    n_text_per_col <- colSums(type_matrix_numeric == "T")
+    debug_formatted(dbg, "No numeric columns. Returning 1.\n")
     
-    n_frequency <- sort(table(n_text_per_col), decreasing = TRUE)
-    
-    # Return at least 1
-    max(1L, as.integer(names(n_frequency)[1]))
-    
-  } else if (method == 2) {
-    
-    min(sapply(kwb.utils::asColumnList(type_matrix_numeric), function(types) {
-      
-      which(types == "N")[1] - 1
-    }))
+    1L
     
   } else {
     
-    stop_formatted("Undefined method: %s. Possible values: 1, 2", method)
+    type_matrix_numeric <- type_matrix[, indices_numeric, drop = FALSE]
+    
+    n_headers <- if (method == 1) {
+      
+      n_text_per_col <- colSums(type_matrix_numeric == "T")
+      
+      n_frequency <- sort(table(n_text_per_col), decreasing = TRUE)
+      
+      as.integer(names(n_frequency)[1])
+      
+    } else if (method == 2) {
+      
+      min(sapply(kwb.utils::asColumnList(type_matrix_numeric), function(types) {
+        
+        which(types == "N")[1] - 1
+      }))
+      
+    } else {
+      
+      stop_formatted("Undefined method: %s. Possible values: 1, 2", method)
+    }
   }
   
   debug_ok(dbg)
   
-  n_headers
+  # Return at least 1
+  structure(max(1L, n_headers), col_types = col_types)
 }
 
-# guess_from_type_matrix -------------------------------------------------------
+# guess_column_type_from_type_matrix -------------------------------------------
 guess_column_type_from_type_matrix <- function(type_matrix)
 {
   sapply(kwb.utils::asColumnList(type_matrix), function(x) {
