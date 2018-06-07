@@ -25,8 +25,7 @@ if (length(missing_packages)) {
 # Define paths to scripts with functions
 script_paths <- file.path("./R", c(
   "convert_xls_as_xlsx.R",
-  "convert_to_data_frames.R",
-  "copy_xlsx_files.R",
+  "convert_to_data_frames.R",  "copy_xlsx_files.R",
   "file_database.R",
   "get_raw_text_from_xlsx.R",
   "get_tables_from_xlsx.R",
@@ -47,6 +46,7 @@ sourceScripts(script_paths)
 paths <- list(
   drive_jeansen = "//medusa/projekte$/Z-Exchange/Jeansen",
   drive_stick = "F:",
+  drive_c = "C:/Jeansen",
   drive_hauke_home = "<downloads>/Unterstuetzung/Michael",
   downloads = "<home>/Downloads",
   input_dir = "<drive>/Daten_Labor",
@@ -55,13 +55,13 @@ paths <- list(
   home = get_homedir()
 )
 
-paths <- resolve(paths, drive = "drive_hauke_home")
+paths <- kwb.utils::resolve(paths, drive = "drive_c")
 
 # Set input directory
-#input_dir <- safePath(selectElements(paths, "input_dir"))
+input_dir <- kwb.utils::safePath(selectElements(paths, "input_dir"))
 
 # Set directory in which to provide all xlsx files
-export_dir <- safePath(selectElements(paths, "export_dir"))
+export_dir <- kwb.utils::safePath(selectElements(paths, "export_dir"))
 
 if (FALSE)
 {
@@ -78,7 +78,57 @@ if (FALSE)
 # Get all xlsx files to be imported
 files <- dir(export_dir, ".xlsx", recursive = TRUE, full.names = TRUE)
 
-file_database <- to_file_database(files)
+
+files_meta <- c("Meta Info", 
+                "Info-Altdaten", 
+                "Brandenburg_Parameter_BWB_Stolpe", 
+                "Kopie von Brandenburg_Parameter_BWB_Stolpe",
+                "2005-10BeschilderungProbenahmestellenGWWIII", 
+                "Bezeichnungen der Reinwasserstellen",
+                "ReinwasserNomenklatur",
+                "Info zu Altdaten 1970-1998"
+                )
+
+
+files_header_1 <- c("2018-04-11 Chlorid in Brunnen - Übersicht",
+                    "2018-04-27 LIMS Reiw & Rohw Sammel ",
+                    "2018-04-27 Rohwasser Bericht - Galeriefördermengen")
+
+
+files_header_4 <- c("STO Rohw_1999-6_2004",
+                    "Wuhlheide_1999-2003_Okt - Neu",
+                    "KAU_1999-Okt2003")
+                      
+
+files_to_ignore <- c(files_meta, files_header_1, files_header_4)
+
+
+cat(crayon::bgWhite(sprintf("
+###############################################################################\n
+Currently %d files are ignored for import:\n
+Meta files:\n%s\n
+Header1 (without metadata):\n%s\n
+Header4:\n%s\n
+##############################################################################", 
+      length(files_to_ignore), 
+      paste(files_meta, collapse = "\n"), 
+      paste(files_header_1, collapse = "\n"), 
+      paste(files_header_4, collapse = "\n"))))
+
+
+in_files_to_ignore <- kwb.utils::removeExtension(basename(files)) %in% files_to_ignore
+
+
+files_to_import <- files[!in_files_to_ignore]
+
+cat(crayon::bold(crayon::green(sprintf("
+##############################################################################
+Importing %d out of %d files
+##############################################################################", 
+                            length(files_to_import), 
+                            length(files)))))
+
+file_database <- to_file_database(files_to_import)
 
 # files:
 # file_id             file_name folder_id
@@ -93,19 +143,176 @@ file_database$folders
 
 if (FALSE)
 {
-  labor <- import_labor(files, export_dir = export_dir)
+  files_header_4 <- files[stringr::str_detect(string = files ,
+                      pattern = paste0(files_header_4,collapse = "|"))]
   
-  labor_list <- import_labor(files, export_dir = export_dir, func = read_bwb_data)
+  labor_header4_list <- import_labor(files = files_header_4,
+                      export_dir = export_dir, 
+                      func = read_bwb_header4)
   
-  indices <- which(sapply(labor_list, inherits, "try-error"))
+
+  ### Errors: STO Rohw_1999-6_2004.xlsx:
+  ### Folder: "K-TL_LSW-Altdaten-Werke Teil 2/Werke Teil 2/Stolpe"
+  ### File: "STO Rohw_1999-6_2004.xlsx
+  ### Sheet: "69 STO Birkenwerder 2001" -> "Keine Proben!
+  has_errors <- sapply(labor_header4_list, inherits, "try-error")
   
-  # for (file in files[indices]) {
-  # try(expr = read_bwb_data(file))
-  # }
-  files_with_problems <- files[indeces]
-  file <- files_with_problems[1]
-  read_bwb_data(file)
-  kwb.utils::hsOpenWindowsExplorer(file)
+  labor_header4_df <- data.table::rbindlist(l = labor_header4_list[!has_errors], 
+                                            fill = TRUE)
+  
+  View(labor_header4_df)
+  
+  
+  labor <- read_bwb_data(files = files_to_import)
+  View(head(labor))
+  
+  ### Problems:
+  labor[labor$`Datum@NA` == "-1102896000",c("file_name", "sheet_name")]
+
+  
+labor_list <- import_labor(files_to_import, 
+                           export_dir = export_dir, 
+                           func = read_bwb_data)
+  
+ has_errors <- unlist(sapply(labor_list, inherits, "try-error"))
+  
+ has_no_data <-  unlist(sapply(labor_list, nrow))==0
+ 
+ weired_cols <- c("frei@NA", "X__1")
+ for (weired_col in weired_cols) {
+ org_of_prob <- which(sapply(labor_list, function(x) any(names(x) %in% weired_col)))
+ 
+ cat(crayon::bold(crayon::red(sprintf("Weired column '%s' found in:\n%s\n
+Path(s):\n%s\n\n", 
+               weired_col,
+               paste(names(org_of_prob), collapse = "\n"),
+               paste(normalizePath(files_to_import[org_of_prob]), 
+                     collapse = "\n")))))
+ }
+ ###Weired column 'frei@NA' found in:
+ ###BEE_Roh_Rein_1970-1998_TVO_Metalle.xlsx
+ ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Beelitzhof
+ 
+ ###Weired column 'X__1' found in:
+ ###FRI_Br_GAL_C_Einzelparameter.xlsx
+ ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Allgemein
+ 
+ dd <- unique(labor$`NA@Datum`)
+ View(labor[labor$`NA@Datum` %in% dd[!is.na(dd)],])
+ 
+ labor_all <- data.table::rbindlist(l = list(x1 = labor, 
+                                x2 = labor_header4_df),
+                                fill = TRUE)
+
+ 
+ View(head(labor_all))
+ 
+ tmp_list <- labor_list[!has_errors]
+ tmp_list <- tmp_list[!has_no_data]
+
+ 
+ get_datatypes <- function(df, to_sort = FALSE, decreasing = TRUE) {
+   tbl_datatypes <- table(unlist(sapply(df, class)))
+   
+   if (to_sort) tbl_datatypes <- sort(tbl_datatypes, decreasing)
+   
+
+   vec <- c(tbl_datatypes/sum(tbl_datatypes), 
+            "n"=sum(tbl_datatypes))
+   
+   coltype_fraction <- as.data.frame(matrix(data = vec, byrow = TRUE, 
+                                            ncol = length(vec)))
+   names(coltype_fraction) <- names(vec)
+   return(coltype_fraction)
+ }
+ 
+
+ check_datatypes <- function(data_list) {
+   data_df <- data.table::rbindlist(l = lapply(data_list,get_datatypes), 
+                                          fill = TRUE)
+   
+   cbind(data_df, filenames = names(data_list))
+ }
+ 
+ checked_datatypes_df <- check_datatypes(tmp_list)
+ 
+ 
+ labor_df <- data.table::rbindlist(l = tmp_list, fill = TRUE)
+
+
+ get_unique_rows <- function(df, col_name, 
+                             export = TRUE, 
+                             expDir = ".") {
+  
+`%>%` <-  magrittr::`%>%`  
+
+
+ row_values_df <- df %>% 
+   dplyr::group_by_(.dots = as.name(col_name)) %>%  
+   dplyr::summarise(n = n())
+ names(row_values_df) <- c(col_name, "n") 
+ 
+ if (export) write.csv(x = row_values_df, 
+                       file = sprintf("%s/%s.csv", 
+                                      expDir, 
+                                      col_name),
+                       row.names = FALSE)
+ return(row_values_df)
+ }
+ 
+ date_name <- get_unique_rows(df = labor_all,col_name = "Datum@NA")
+ variable_name <- get_unique_rows(df = labor_all,col_name = "VariableName")
+ data_value <- get_unique_rows(df = labor_all,col_name = "DataValue")
+ unit_name <- get_unique_rows(df = labor_all,col_name = "UnitName")
+ 
+ col_names <- sort(names(labor_all))
+
+ write.csv(data.frame(ColNames = col_names),
+           file = "ColNames.csv", 
+           row.names = FALSE)
+ 
+ 
+  files_with_problems <- files_to_import[has_errors]
+  print(sprintf("number of xlsx files with problems: %d", 
+                length(files_with_problems)))
+  
+  file <- files_with_problems[3]
+  
+  ### Check problems in xlsx file
+  tmp_file <- read_bwb_data(file)
+  
+  ### Open original file and modify it
+  org_files <- dir(input_dir, 
+                   recursive = TRUE, 
+                   full.names = TRUE,
+                   pattern = "\\.[xX][lL][sS][xX]?")
+  
+  kwb.utils::removeExtension(basename(file))
+  
+  idx <- stringr::str_detect(
+    string = org_files,
+    pattern = kwb.utils::removeExtension(basename(file)))
+  
+  org_file <- org_files[idx]
+  
+  kwb.utils::hsOpenWindowsExplorer(org_file)
+  
+  ####
+  is_xls <- stringr::str_detect(string = org_file, 
+                                pattern = "\\.([xX][lL][sS])$")
+  
+  if(is_xls) {
+    convert_xls_as_xlsx(dirname(org_file),
+                        export_dir)
+  } else {
+    
+    copy_xlsx_files(from_dir = dirname(org_file), 
+                    to_dir = dirname(gsub(x = org_file, 
+                                          pattern = input_dir, 
+                                          replacement = export_dir,
+                                          fixed = TRUE)),
+                    overwrite = TRUE)
+  }
   
   output_files <- file.path(export_dir, c(
     "read_bwb_data_Rconsole.txt", 
