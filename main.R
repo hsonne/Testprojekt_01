@@ -95,8 +95,6 @@ files_header_1 <- c("2018-04-11 Chlorid in Brunnen - Übersicht",
                     "2018-04-27 Rohwasser Bericht - Galeriefördermengen")
 
 
-files_header_3 <- c("KAU_Roh_Rein_1994-1998_HKW")
-
 files_header_4 <- c("STO Rohw_1999-6_2004",
                     "Wuhlheide_1999-2003_Okt - Neu",
                     "KAU_1999-Okt2003")
@@ -110,13 +108,11 @@ cat(crayon::bgWhite(sprintf("
 Currently %d files are ignored for import:\n
 Meta files:\n%s\n
 Header1 (without metadata):\n%s\n
-Header3:\n%s\n
 Header4:\n%s\n
 ##############################################################################", 
       length(files_to_ignore), 
       paste(files_meta, collapse = "\n"), 
       paste(files_header_1, collapse = "\n"), 
-      paste(files_header_3, collapse = "\n"),
       paste(files_header_4, collapse = "\n"))))
 
 
@@ -150,17 +146,29 @@ if (FALSE)
   files_header_4 <- files[stringr::str_detect(string = files ,
                       pattern = paste0(files_header_4,collapse = "|"))]
   
-  labor_header4 <- import_labor(files = files_header_4,
+  labor_header4_list <- import_labor(files = files_header_4,
                       export_dir = export_dir, 
                       func = read_bwb_header4)
+  
+
+  ### Errors: STO Rohw_1999-6_2004.xlsx:
+  ### Folder: "K-TL_LSW-Altdaten-Werke Teil 2/Werke Teil 2/Stolpe"
+  ### File: "STO Rohw_1999-6_2004.xlsx
+  ### Sheet: "69 STO Birkenwerder 2001" -> "Keine Proben!
+  has_errors <- sapply(labor_header4_list, inherits, "try-error")
+  
+  labor_header4_df <- data.table::rbindlist(l = labor_header4_list[!has_errors], 
+                                            fill = TRUE)
+  
+  View(labor_header4_df)
+  
   
   labor <- read_bwb_data(files = files_to_import)
   View(head(labor))
   
   ### Problems:
   labor[labor$`Datum@NA` == "-1102896000",c("file_name", "sheet_name")]
-  labor[!is.na(labor$`NO3-@mg/l`), c("file_name", "sheet_name")]
-  
+
   
 labor_list <- import_labor(files_to_import, 
                            export_dir = export_dir, 
@@ -170,9 +178,7 @@ labor_list <- import_labor(files_to_import,
   
  has_no_data <-  unlist(sapply(labor_list, nrow))==0
  
- #### NO3-: 2 mal in 
- #### K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Buch\BUC_Reinw_1992-1997.xlsx
- weired_cols <- c("frei@NA", "NO3-@mg/l", "X__1")
+ weired_cols <- c("frei@NA", "X__1")
  for (weired_col in weired_cols) {
  org_of_prob <- which(sapply(labor_list, function(x) any(names(x) %in% weired_col)))
  
@@ -183,7 +189,23 @@ Path(s):\n%s\n\n",
                paste(normalizePath(files_to_import[org_of_prob]), 
                      collapse = "\n")))))
  }
+ ###Weired column 'frei@NA' found in:
+ ###BEE_Roh_Rein_1970-1998_TVO_Metalle.xlsx
+ ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Beelitzhof
  
+ ###Weired column 'X__1' found in:
+ ###FRI_Br_GAL_C_Einzelparameter.xlsx
+ ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Allgemein
+ 
+ dd <- unique(labor$`NA@Datum`)
+ View(labor[labor$`NA@Datum` %in% dd[!is.na(dd)],])
+ 
+ labor_all <- data.table::rbindlist(l = list(x1 = labor, 
+                                x2 = labor_header4_df),
+                                fill = TRUE)
+
+ 
+ View(head(labor_all))
  
  tmp_list <- labor_list[!has_errors]
  tmp_list <- tmp_list[!has_no_data]
@@ -224,7 +246,8 @@ Path(s):\n%s\n\n",
   
 `%>%` <-  magrittr::`%>%`  
 
- row_values_df <- as.data.frame(df) %>% 
+
+ row_values_df <- df %>% 
    dplyr::group_by_(.dots = as.name(col_name)) %>%  
    dplyr::summarise(n = n())
  names(row_values_df) <- c(col_name, "n") 
@@ -237,19 +260,12 @@ Path(s):\n%s\n\n",
  return(row_values_df)
  }
  
-#  for (colname in names(labor_df)) {
-#  print(sprintf("Get unique rows for %s", colname))
-#  get_unique_rows(df = labor_df,
-#                  col_name = colname, 
-#                  expDir = export_dir)
-# }
-#  
- date_name <- get_unique_rows(df = labor_df,col_name = "Datum@NA")
- variable_name <- get_unique_rows(df = labor_df,col_name = "VariableName")
- data_value <- get_unique_rows(df = labor_df,col_name = "DataValue")
- unit_name <- get_unique_rows(df = labor_df,col_name = "UnitName")
+ date_name <- get_unique_rows(df = labor_all,col_name = "Datum@NA")
+ variable_name <- get_unique_rows(df = labor_all,col_name = "VariableName")
+ data_value <- get_unique_rows(df = labor_all,col_name = "DataValue")
+ unit_name <- get_unique_rows(df = labor_all,col_name = "UnitName")
  
- col_names <- sort(names(labor_df))
+ col_names <- sort(names(labor_all))
 
  write.csv(data.frame(ColNames = col_names),
            file = "ColNames.csv", 
