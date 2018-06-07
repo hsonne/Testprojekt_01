@@ -117,11 +117,13 @@ read_bwb_header2 <- function(
     
     # Read the header rows      
     stopifnot(skip == 2) # Otherwise we need more column names!
-    header <- read_from_excel(file, sheet, n_max = skip)
-    header <- to_full_metadata(header, file, sheet)
-        
+    header <- read_from_excel(file, sheet, 
+                              range = cellranger::cell_rows(c(1,skip)))
+    header <- to_full_metadata_4(header, file, sheet)
+    
     # Read the data rows      
-    tmp_content <- read_from_excel(file, sheet, skip = skip)
+    tmp_content <- read_from_excel(file, sheet, 
+                                   range = cellranger::cell_rows(c(skip+1,NA)))
     
     indices <- match(names(tmp_content), header$id)
     
@@ -139,6 +141,60 @@ read_bwb_header2 <- function(
     gather_and_join_2(tmp_content, columns_keep, header)
   })
 
+  data.table::rbindlist(l = data_frames, fill = TRUE)
+}
+
+read_bwb_header4 <- function(
+  file, skip = 4, keep_pattern = gather_ignore(), 
+  site_id_pattern = "^[0-9]{1,4}", dbg = TRUE
+)
+{
+  # Define helper functions
+  read_from_excel <- function(...) {
+    readxl::read_xlsx(..., col_names = FALSE)
+  }
+  
+  sheets <- readxl::excel_sheets(file)
+  
+  has_site_id <- stringr::str_detect(sheets, site_id_pattern)
+  
+  stop_on_missing_or_inform_on_extra_sheets(has_site_id, file, sheets)
+  
+  data_frames <- lapply(which(has_site_id), function(sheet_index) {
+    
+    sheet <- sheets[sheet_index]
+    
+    cat(sprintf(
+      "FROM: %s\nReading sheet (%d/%d): %s\n", 
+      file, sheet_index, length(sheets), sheet
+    ))
+    
+    # Read the header rows      
+    stopifnot(skip == 4) # Otherwise we need more column names!
+    header <- read_from_excel(file, sheet, 
+                              range = cellranger::cell_rows(c(1,skip)))
+    header <- to_full_metadata_4(header, file, sheet)
+    
+    # Read the data rows      
+    tmp_content <- read_from_excel(file, sheet, 
+                                   range = cellranger::cell_rows(c(skip+1,NA)))
+    
+    indices <- match(names(tmp_content), header$id)
+    
+    names(tmp_content) <- header$key[indices]
+    
+    # Check content format
+    tbl_datatypes <- table(unlist(sapply(tmp_content, class)))
+    tbl_datatypes <- sort(tbl_datatypes, decreasing = TRUE)
+    
+    columns_keep <- grep(keep_pattern, names(tmp_content), value = TRUE)
+    
+    print_datatype_info_if(dbg, tbl_datatypes, columns_keep)
+    
+    # TODO: check for duplicates in names
+    gather_and_join_2(tmp_content, columns_keep, header)
+  })
+  
   data.table::rbindlist(l = data_frames, fill = TRUE)
 }
 
@@ -169,8 +225,8 @@ stop_on_missing_or_inform_on_extra_sheets <- function(has_site_id, file, sheets)
   }
 }
 
-# to_full_metadata -------------------------------------------------------------
-to_full_metadata <- function(header, file, sheet)
+# to_full_metadata2 -------------------------------------------------------------
+to_full_metadata_2 <- function(header, file, sheet)
 {
   # Start a metadata table with the Variable name and unit
   header <- as.data.frame(t(header))
@@ -183,6 +239,23 @@ to_full_metadata <- function(header, file, sheet)
   header$sheet_name <- sheet
   header$SiteID <- get_SiteID(sheet)
 
+  header  
+}
+
+# to_full_metadata2 -------------------------------------------------------------
+to_full_metadata_4 <- function(header, file, sheet)
+{
+  # Start a metadata table with the Variable name and unit
+  header <- as.data.frame(t(header))
+  names(header) <- c("VariableName", "Method", "UnitName", "DetectionLimit")
+  
+  # Extend the metadata      
+  header$key <- kwb.utils::pasteColumns(header, sep = "@")
+  header$id <- rownames(header)
+  header$file_name <- normalizePath(file)
+  header$sheet_name <- sheet
+  header$SiteID <- get_SiteID(sheet)
+  
   header  
 }
 

@@ -55,7 +55,7 @@ paths <- list(
   home = get_homedir()
 )
 
-paths <- kwb.utils::resolve(paths, drive = "drive_jeansen")
+paths <- kwb.utils::resolve(paths, drive = "drive_c")
 
 # Set input directory
 input_dir <- kwb.utils::safePath(selectElements(paths, "input_dir"))
@@ -89,18 +89,17 @@ files_meta <- c("Meta Info",
                 "Info zu Altdaten 1970-1998"
                 )
 
-#files_no_sitecode <- c("Wuhlheide_Beelitzhof_Teildaten") 
-                       
 
 files_header_1 <- c("2018-04-11 Chlorid in Brunnen - Übersicht",
                     "2018-04-27 LIMS Reiw & Rohw Sammel ",
                     "2018-04-27 Rohwasser Bericht - Galeriefördermengen")
+
+
+files_header_3 <- c("KAU_Roh_Rein_1994-1998_HKW")
+
 files_header_4 <- c("STO Rohw_1999-6_2004",
                     "Wuhlheide_1999-2003_Okt - Neu",
-                    "KAU_1999-Okt2003", 
-                    "KAU_Roh_Rein_1992-1998_TVO", 
-                    "KAU_Roh_Rein_1994-1998_HKW",
-                    "KAU_Rohw_Reinw_1992-1998")
+                    "KAU_1999-Okt2003")
                       
 
 files_to_ignore <- c(files_meta, files_header_1, files_header_4)
@@ -111,11 +110,13 @@ cat(crayon::bgWhite(sprintf("
 Currently %d files are ignored for import:\n
 Meta files:\n%s\n
 Header1 (without metadata):\n%s\n
+Header3:\n%s\n
 Header4:\n%s\n
 ##############################################################################", 
       length(files_to_ignore), 
       paste(files_meta, collapse = "\n"), 
       paste(files_header_1, collapse = "\n"), 
+      paste(files_header_3, collapse = "\n"),
       paste(files_header_4, collapse = "\n"))))
 
 
@@ -146,14 +147,19 @@ file_database$folders
 
 if (FALSE)
 {
+  files_header_4 <- files[stringr::str_detect(string = files ,
+                      pattern = paste0(files_header_4,collapse = "|"))]
+  
+  labor_header4 <- import_labor(files = files_header_4,
+                      export_dir = export_dir, 
+                      func = read_bwb_header4)
+  
   labor <- read_bwb_data(files = files_to_import)
   View(head(labor))
   
   ### Problems:
   labor[labor$`Datum@NA` == "-1102896000",c("file_name", "sheet_name")]
   labor[!is.na(labor$`NO3-@mg/l`), c("file_name", "sheet_name")]
-
-  
   
   
 labor_list <- import_labor(files_to_import, 
@@ -166,7 +172,7 @@ labor_list <- import_labor(files_to_import,
  
  #### NO3-: 2 mal in 
  #### K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Buch\BUC_Reinw_1992-1997.xlsx
- weired_cols <- c("frei@NA", "NO3-@mg/l")
+ weired_cols <- c("frei@NA", "NO3-@mg/l", "X__1")
  for (weired_col in weired_cols) {
  org_of_prob <- which(sapply(labor_list, function(x) any(names(x) %in% weired_col)))
  
