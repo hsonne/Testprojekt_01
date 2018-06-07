@@ -119,7 +119,7 @@ read_bwb_header2 <- function(
     stopifnot(skip == 2) # Otherwise we need more column names!
     header <- read_from_excel(file, sheet, 
                               range = cellranger::cell_rows(c(1,skip)))
-    header <- to_full_metadata_4(header, file, sheet)
+    header <- to_full_metadata_2(header, file, sheet)
     
     # Read the data rows      
     tmp_content <- read_from_excel(file, sheet, 
