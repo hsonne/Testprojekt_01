@@ -16,9 +16,22 @@ gather_ignore <- function()
   kwb.utils::collapsed(fields, "|")
 }
 
+
+
+# gather_ignore ----------------------------------------------------------------
+gather_ignore_clean <- function()
+{
+  fields <- c(
+    "LabSampleCode", "Date", "Time", "Waterbody", "ExSiteCode", 
+    "Site"
+  )
+  
+  kwb.utils::collapsed(fields, "|")
+}
+
 # read_bwb_header1_meta --------------------------------------------------------
 read_bwb_header1_meta <- function(
-  file, meta_pattern = "META", keep_pattern = gather_ignore()
+  file, meta_pattern = "META", keep_pattern = gather_ignore_clean()
 )
 {
   # Get the names of the sheets in the Excel workbook
@@ -49,7 +62,7 @@ read_bwb_header1_meta <- function(
     columns_clean <- kwb.utils::selectColumns(metadata, "Name")
 
     # Are the columns kept as columns, i. e. excluded from gathering?
-    keep <- stringr::str_detect(columns_orig, keep_pattern)
+    keep <- stringr::str_detect(columns_clean, keep_pattern)
     
     # Convert the data from wide to long format
     gather_and_join_1(tmp_data, columns_clean[keep], metadata)
@@ -287,10 +300,13 @@ cat_green_bold_0 <- function(...)
 }
 
 # gather_and_join_1 ------------------------------------------------------------
-gather_and_join_1 <- function(tmp_data, columns_keep, metadata)
+gather_and_join_1 <- function(tmp_data, columns_keep, metadata, dbg = FALSE)
 {
   `%>%` <- magrittr::`%>%`
   
+  kwb.utils::printIf(dbg, names(tmp_data))
+  kwb.utils::printIf(dbg, columns_keep)
+
   tidyr::gather_(
     data = tmp_data, key_col = "VariableName", value_col = "DataValue", 
     gather_cols = setdiff(names(tmp_data), columns_keep)
@@ -313,6 +329,7 @@ gather_and_join_2 <- function(tmp_content, columns_keep, header)
 # read_bwb_data ----------------------------------------------------------------
 read_bwb_data <- function(
   files, meta_pattern = "META", keep_pattern = gather_ignore(), 
+  keep_pattern_clean = gather_ignore_clean(),
   site_id_pattern = "^[0-9]{1,4}", dbg = TRUE
 )
 {
@@ -326,7 +343,7 @@ read_bwb_data <- function(
 
     if (any(is_meta)) {
       
-      header <- read_bwb_header1_meta(file, meta_pattern, keep_pattern)
+      header <- read_bwb_header1_meta(file, meta_pattern, keep_pattern_clean)
       
       if (exists("header") && nrow(header)) {
         
