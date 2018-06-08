@@ -49,8 +49,8 @@ paths <- list(
   drive_c = "C:/Jeansen",
   drive_hauke_home = "<downloads>/Unterstuetzung/Michael",
   downloads = "<home>/Downloads",
-  input_dir = "<drive>/Daten_Labor",
-  export_dir = "<drive>/ANALYSIS_R/tmp",
+  input_dir = "<drive>/02_Daten_Labor_Aufbereitung_02",
+  export_dir = "<drive>/03_ANALYSIS_R/tmp",
   export_dir_allg = "<export_dir>/K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Allgemein",
   home = get_homedir()
 )
