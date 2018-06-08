@@ -124,7 +124,7 @@ read_bwb_header2 <- function(
     # Read the data rows      
     tmp_content <- read_from_excel(file, sheet, 
             range = cellranger::cell_limits(ul = c(skip+1,1),
-                                            lr = c(NA,ncol(header))))
+                                            lr = c(NA,nrow(header))))
     
     indices <- match(names(tmp_content), header$id)
     
@@ -179,7 +179,7 @@ read_bwb_header4 <- function(
     # Read the data rows      
     tmp_content <- read_from_excel(file, sheet, 
           range = cellranger::cell_limits(ul = c(skip+1,1),
-                                          lr = c(NA,ncol(header))))
+                                          lr = c(NA,nrow(header))))
     
     indices <- match(names(tmp_content), header$id)
     
