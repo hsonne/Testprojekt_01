@@ -55,7 +55,7 @@ paths <- list(
   home = get_homedir()
 )
 
-paths <- kwb.utils::resolve(paths, drive = "drive_c")
+paths <- kwb.utils::resolve(paths, drive = "drive_jeansen")
 
 # Set input directory
 input_dir <- kwb.utils::safePath(selectElements(paths, "input_dir"))
@@ -80,6 +80,9 @@ files <- dir(export_dir, ".xlsx", recursive = TRUE, full.names = TRUE)
 
 
 files_meta <- c("Meta Info", 
+                "Header ident",
+                "Parameter ident.xlsx",
+                "Parameter",
                 "Info-Altdaten", 
                 "Brandenburg_Parameter_BWB_Stolpe", 
                 "Kopie von Brandenburg_Parameter_BWB_Stolpe",
