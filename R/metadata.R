@@ -132,3 +132,34 @@ header_matrix_to_column_info <- function(header_matrix, table_id, col_types)
 
   kwb.utils::resetRowNames(column_info)
 }
+
+# suggest_column_name ----------------------------------------------------------
+suggest_column_name <- function(column_info)
+{
+  # Suggest column names based on the original column names
+  raw_names <- kwb.utils::selectColumns(column_info, "column_names_old")
+  
+  # Keep only alphanumeric characters
+  new_names <- gsub("[^A-Za-z0-9]", "", raw_names)
+  
+  # Replace "" with "X"
+  new_names <- gsub("^$", "X", new_names)
+  
+  # Keep only the first eight characters
+  new_names <- kwb.utils::shorten(new_names, max_chars = 11, delimiter = ".")
+  
+  column_info$column_name <- new_names
+  
+  key_columns <- c("file_id", "table_id")
+  
+  column_info_per_table <- split(column_info, column_info[, key_columns])
+  
+  column_info_per_table <- lapply(column_info_per_table, function(xx) {
+    
+    xx$column_name <- kwb.utils::makeUnique(xx$column_name, warn = FALSE)
+    
+    xx
+  })
+  
+  kwb.utils::rbindAll(column_info_per_table)
+}
