@@ -49,13 +49,13 @@ paths <- list(
   drive_c = "C:/Jeansen",
   drive_hauke_home = "<downloads>/Unterstuetzung/Michael",
   downloads = "<home>/Downloads",
-  input_dir = "<drive>/Daten_Labor",
-  export_dir = "<drive>/ANALYSIS_R/tmp",
+  input_dir = "<drive>/02_Daten_Labor_Aufbereitung_02",
+  export_dir = "<drive>/03_ANALYSIS_R/tmp",
   export_dir_allg = "<export_dir>/K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Allgemein",
   home = get_homedir()
 )
 
-paths <- kwb.utils::resolve(paths, drive = "drive_c")
+paths <- kwb.utils::resolve(paths, drive = "drive_jeansen")
 
 # Set input directory
 input_dir <- kwb.utils::safePath(selectElements(paths, "input_dir"))
@@ -80,6 +80,9 @@ files <- dir(export_dir, ".xlsx", recursive = TRUE, full.names = TRUE)
 
 
 files_meta <- c("Meta Info", 
+                "Header ident",
+                "Parameter ident.xlsx",
+                "Parameter",
                 "Info-Altdaten", 
                 "Brandenburg_Parameter_BWB_Stolpe", 
                 "Kopie von Brandenburg_Parameter_BWB_Stolpe",
@@ -178,25 +181,6 @@ labor_list <- import_labor(files_to_import,
   
  has_no_data <-  unlist(sapply(labor_list, nrow))==0
  
- weired_cols <- c("frei@NA", "X__1")
- for (weired_col in weired_cols) {
- org_of_prob <- which(sapply(labor_list, function(x) any(names(x) %in% weired_col)))
- 
- cat(crayon::bold(crayon::red(sprintf("Weired column '%s' found in:\n%s\n
-Path(s):\n%s\n\n", 
-               weired_col,
-               paste(names(org_of_prob), collapse = "\n"),
-               paste(normalizePath(files_to_import[org_of_prob]), 
-                     collapse = "\n")))))
- }
- ###Weired column 'frei@NA' found in:
- ###BEE_Roh_Rein_1970-1998_TVO_Metalle.xlsx
- ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Beelitzhof
- 
- ###Weired column 'X__1' found in:
- ###FRI_Br_GAL_C_Einzelparameter.xlsx
- ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Allgemein
- 
  dd <- unique(labor$`NA@Datum`)
  View(labor[labor$`NA@Datum` %in% dd[!is.na(dd)],])
  
@@ -204,8 +188,51 @@ Path(s):\n%s\n\n",
                                 x2 = labor_header4_df),
                                 fill = TRUE)
 
+
  
  View(head(labor_all))
+ 
+ 
+ get_files_with_weird_cols <- function (mylist,
+    weird_cols = c("frei@NA", 
+                  "X__1", 
+                  "NO3-@mg/l", 
+                  "Dimethylaminophenazon@Hausmethode@µg/l@NA",
+                  "Carbamazepin@Hausmethode@µg/l@NA", 
+                  "Phenazon@Hausmethode@µg/l@NA",
+                  "Propyphenazon@Hausmethode@µg/l@NA",
+                  "pH-Wert@DIN 38404-C05@-@9.5",
+                  "el. Leitfähigkeit (25 °C)@DIN EN 27888-C08@µS/cm@2000",
+                  "Proben-Nr.@NA@NA@NA",
+                  "el. Leitfähigkeit (25 °C)@DIN EN 27888-C08@µS/cm@NA",
+                  "Eisen@DIN EN 11885-E22@mg/l@NA",
+                  "Mangan@DIN EN 11885-E22@mg/l@NA")) {
+ for (weird_col in weird_cols) {
+   org_of_prob <- which(sapply(mylist, 
+                               function(x) any(names(x) %in% weird_col)))
+   
+   if(length(org_of_prob) > 0) {
+   cat(crayon::bold(crayon::red(sprintf("Weird column '%s' found in:\n%s\n
+                                        Path(s):\n%s\n\n", 
+                                        weird_col,
+                                        paste(names(org_of_prob), collapse = "\n"),
+                                        paste(normalizePath(files_to_import[org_of_prob]), 
+                                              collapse = "\n")))))
+   }
+ }
+    }
+ 
+ get_files_with_weird_cols(labor_list)
+ get_files_with_weird_cols(labor_header4_list)
+ ###weird column 'frei@NA' found in:
+ ###BEE_Roh_Rein_1970-1998_TVO_Metalle.xlsx
+ ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Beelitzhof
+ 
+ ###weird column 'X__1' found in:
+ ###FRI_Br_GAL_C_Einzelparameter.xlsx
+ ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Allgemein
+ 
+ 
  
  tmp_list <- labor_list[!has_errors]
  tmp_list <- tmp_list[!has_no_data]
