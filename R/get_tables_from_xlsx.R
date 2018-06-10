@@ -1,12 +1,15 @@
 # get_text_tables_from_xlsx ----------------------------------------------------
 get_text_tables_from_xlsx <- function(
-  file, table_info = import_table_metadata(file), guess_headers = TRUE,
-  dbg = TRUE
+  file, table_info = NULL, guess_headers = NULL, dbg = TRUE
 )
 {
   if (FALSE) {
-    table_info = import_table_metadata(file); guess_headers = TRUE
+    table_info = NULL; guess_headers = is.null(table_info)
   }
+
+  guess_headers <- kwb.utils::defaultIfNULL(guess_headers, is.null(table_info))
+  
+  #kwb.utils::printIf(dbg, guess_headers)
   
   # Get one character matrix per sheet
   text_sheets <- get_raw_text_from_xlsx(file)
@@ -21,6 +24,11 @@ get_text_tables_from_xlsx <- function(
       "Skipping empty sheet(s):\n  ", 
       kwb.utils::stringList(sheet_info$sheet_name[is_empty], collapse = "\n  ")
     )
+  }
+
+  if (is.null(table_info)) {
+    
+    table_info <- import_table_metadata(file)
   }
   
   if (is.null(table_info)) {
@@ -58,11 +66,33 @@ get_text_tables_from_xlsx <- function(
     
     debug_ok(dbg)
     
-    table_info$n_headers <- unlist(n_headers_list)
+    if ("skip" %in% names(table_info)) {
+      
+      keep <- kwb.utils::isNaOrEmpty(table_info$skip)
+      
+      debug_formatted(dbg, "Skipping %d tables ... ", sum(! keep))
+      
+      table_info <- table_info[keep, ]
+      
+      debug_ok(dbg)
+    }
     
-    table_info$col_types <- sapply(n_headers_list, function(x) {
+    #headtail(table_info)
+    
+    table_info$n_headers <- unlist(n_headers_list)
+
+    col_types <- sapply(n_headers_list, function(x) {
+      
       kwb.utils::collapsed(kwb.utils::getAttribute(x, "col_types"), "|")
     })
+    
+    table_info$col_types <- col_types
+    
+  } else {
+
+    kwb.utils::printIf(dbg, guess_headers)
+    
+    debug_formatted(dbg, "Not guessing headers!\n")
   }
   
   structure(
@@ -270,9 +300,14 @@ extract_tables_from_ranges <- function(text_sheets, table_info)
     
     row_range <- seq(table_info$first_row[i], table_info$last_row[i])
     
-    col_range <- seq(table_info$first_col[i], table_info$last_col[i])
+    #col_range <- seq(table_info$first_col[i], table_info$last_col[i])
+    col_range <- seq_len(ncol(sheet_rows))
     
-    table_matrix <- sheet_rows[row_range, col_range, drop = FALSE]
+    table_matrix <- sheet_rows[row_range, , drop = FALSE]
+    
+    as.matrix(kwb.utils::removeEmptyColumns(
+      as.data.frame(table_matrix), dbg = FALSE
+    ))
   })
 
   stats::setNames(tables, get_col(table_info, "table_id"))
