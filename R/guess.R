@@ -1,17 +1,27 @@
 # guess_number_of_headers_from_text_matrix -------------------------------------
 guess_number_of_headers_from_text_matrix <- function(
-  x, table_id, method = 2, dbg = TRUE
+  x, table_id, guess_max = 100, method = 2, dbg = TRUE
 )
 {
   if (FALSE) {
     method = 2; dbg = TRUE
   }
   
+  guess_max <- kwb.utils::defaultIfNULL(guess_max, nrow(x))
+
+  guess_max <- min(guess_max, nrow(x))
+    
   debug_formatted(
-    dbg, "\nGuessing number of header rows in '%s' ... ", table_id
+    dbg, "\nGuessing number of header rows in '%s' (look at %d rows)... ", 
+    table_id, guess_max
   )
   
   type_matrix <- get_type_matrix_from_text_matrix(x)
+  
+  if (! is.null(guess_max)) {
+    
+    type_matrix <- type_matrix[seq_len(guess_max), , drop = FALSE]
+  }
   
   col_types <- guess_column_type_from_type_matrix(type_matrix)
   
