@@ -53,7 +53,7 @@ read_bwb_header1_meta <- function(
     metadata <- all_metadata[all_metadata$Sheet == sheet, ]
     
     # Load the data from the current sheet
-    tmp_data <- readxl::read_excel(file, sheet)
+    tmp_data <- readxl::read_excel(file, sheet, guess_max = 2^20)
 
     # Safely select the original column names
     columns_orig <- kwb.utils::selectColumns(metadata, "OriginalName")
@@ -165,7 +165,7 @@ read_bwb_header4 <- function(
 {
   # Define helper functions
   read_from_excel <- function(...) {
-    readxl::read_xlsx(..., col_names = FALSE)
+    readxl::read_xlsx(..., col_names = FALSE, guess_max = 2^20)
   }
   
   sheets <- readxl::excel_sheets(file)

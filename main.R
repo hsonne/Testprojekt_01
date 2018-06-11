@@ -51,7 +51,9 @@ paths <- list(
   downloads = "<home>/Downloads",
   input_dir = "<drive>/02_Daten_Labor_Aufbereitung_02",
   export_dir = "<drive>/03_ANALYSIS_R/tmp",
-  export_dir_allg = "<export_dir>/K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Allgemein",
+  sel_folder = "K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Buch",
+  input_dir_sel = "<input_dir>/<sel_folder>",
+  export_dir_sel = "<export_dir>/<sel_folder>",
   home = get_homedir()
 )
 
@@ -71,6 +73,12 @@ if (FALSE)
   
   # Convert xls to xlsx Excel files
   convert_xls_as_xlsx(input_dir, export_dir)
+  
+  if (FALSE) {
+  convert_xls_as_xlsx(input_dir = paths$input_dir_sel, 
+                      export_dir = paths$export_dir_sel)
+  }
+  
   
   # Copy remaining already existing .xlsx files in same directory
   copy_xlsx_files(input_dir, export_dir, overwrite = TRUE)
