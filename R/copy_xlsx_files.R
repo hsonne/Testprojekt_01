@@ -13,7 +13,7 @@ copy_xlsx_files <- function(
 
   to_paths <- gsub(from_dir, to_dir, from_paths, fixed = TRUE)
 
-  fs::dir_create(normalizePath(dirname(from_paths)), recursive = TRUE)
+  fs::dir_create(dirname(to_paths), recursive = TRUE)
 
   for (i in seq_along(from_paths)) {
     
