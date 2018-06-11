@@ -65,7 +65,7 @@ read_bwb_header1_meta <- function(
     keep <- stringr::str_detect(columns_clean, keep_pattern)
     
     # Convert the data from wide to long format
-    gather_and_join_1(tmp_data, columns_clean[keep], metadata)
+    gather_and_join_1(tmp_data, columns_clean[keep], metadata, dbg = TRUE)
   })
   
   # Merge all data frames in long format  
@@ -110,8 +110,8 @@ read_bwb_header2 <- function(
   site_id_pattern = "^[0-9]{1,4}", dbg = TRUE
 )
 {
-  # Define helper functions
-  read_from_excel <- function(...) readxl::read_excel(..., col_names = FALSE)
+  # Define helper functions, 2^20 = max number of rows in xlsx
+  read_from_excel <- function(...) readxl::read_excel(..., col_names = FALSE, guess_max = 2^20)
 
   sheets <- readxl::excel_sheets(file)
   
