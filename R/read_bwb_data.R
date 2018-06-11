@@ -53,7 +53,7 @@ read_bwb_header1_meta <- function(
     metadata <- all_metadata[all_metadata$Sheet == sheet, ]
     
     # Load the data from the current sheet
-    tmp_data <- readxl::read_excel(file, sheet)
+    tmp_data <- readxl::read_excel(file, sheet, guess_max = 2^20)
 
     # Safely select the original column names
     columns_orig <- kwb.utils::selectColumns(metadata, "OriginalName")
@@ -65,7 +65,7 @@ read_bwb_header1_meta <- function(
     keep <- stringr::str_detect(columns_clean, keep_pattern)
     
     # Convert the data from wide to long format
-    gather_and_join_1(tmp_data, columns_clean[keep], metadata)
+    gather_and_join_1(tmp_data, columns_clean[keep], metadata, dbg = TRUE)
   })
   
   # Merge all data frames in long format  
@@ -110,8 +110,8 @@ read_bwb_header2 <- function(
   site_id_pattern = "^[0-9]{1,4}", dbg = TRUE
 )
 {
-  # Define helper functions
-  read_from_excel <- function(...) readxl::read_excel(..., col_names = FALSE)
+  # Define helper functions, 2^20 = max number of rows in xlsx
+  read_from_excel <- function(...) readxl::read_excel(..., col_names = FALSE, guess_max = 2^20)
 
   sheets <- readxl::excel_sheets(file)
   
@@ -165,7 +165,7 @@ read_bwb_header4 <- function(
 {
   # Define helper functions
   read_from_excel <- function(...) {
-    readxl::read_xlsx(..., col_names = FALSE)
+    readxl::read_xlsx(..., col_names = FALSE, guess_max = 2^20)
   }
   
   sheets <- readxl::excel_sheets(file)
@@ -232,11 +232,11 @@ stop_on_missing_or_inform_on_extra_sheets <- function(has_site_id, file, sheets)
   
   if (! all(has_site_id)) {
     
-    warning(crayon::blue(sprintf(
+    crayon::blue(sprintf(
       "FROM: %s\nIgnoring the following (%d/%d) sheet(s):\n%s\n", 
       file, sum(! has_site_id), length(sheets), 
       kwb.utils::stringList(sheets[! has_site_id])
-    )))
+    ))
   }
 }
 
