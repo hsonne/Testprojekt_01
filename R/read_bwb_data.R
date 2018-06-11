@@ -232,11 +232,11 @@ stop_on_missing_or_inform_on_extra_sheets <- function(has_site_id, file, sheets)
   
   if (! all(has_site_id)) {
     
-    warning(crayon::blue(sprintf(
+    crayon::blue(sprintf(
       "FROM: %s\nIgnoring the following (%d/%d) sheet(s):\n%s\n", 
       file, sum(! has_site_id), length(sheets), 
       kwb.utils::stringList(sheets[! has_site_id])
-    )))
+    ))
   }
 }
 

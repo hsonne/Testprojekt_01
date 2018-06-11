@@ -68,6 +68,7 @@ if (FALSE)
   # Get location of excelcnv.exe
   get_excelcnv_exe()
   
+  
   # Convert xls to xlsx Excel files
   convert_xls_as_xlsx(input_dir, export_dir)
   
@@ -165,8 +166,14 @@ if (FALSE)
   
   View(labor_header4_df)
   
+  options(warn = 2)
+  for (i in 11:20) {
+  print(sprintf("File: %s", files_to_import[i]))
+  labor_tmp <- read_bwb_data(files = files_to_import[i])
+  }
   
   labor <- read_bwb_data(files = files_to_import)
+  
   View(head(labor))
   
   ### Problems:
