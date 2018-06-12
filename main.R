@@ -51,7 +51,7 @@ paths <- list(
   downloads = "<home>/Downloads",
   input_dir = "<drive>/02_Daten_Labor_Aufbereitung_02",
   export_dir = "<drive>/03_ANALYSIS_R/tmp",
-  sel_folder = "K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Buch",
+  sel_folder = "K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Jungfernheide",
   input_dir_sel = "<input_dir>/<sel_folder>",
   export_dir_sel = "<export_dir>/<sel_folder>",
   home = get_homedir()
@@ -90,7 +90,7 @@ files <- dir(export_dir, ".xlsx", recursive = TRUE, full.names = TRUE)
 
 files_meta <- c("Meta Info", 
                 "Header ident",
-                "Parameter ident.xlsx",
+                "Parameter ident",
                 "Parameter",
                 "Info-Altdaten", 
                 "Brandenburg_Parameter_BWB_Stolpe", 
@@ -163,124 +163,30 @@ if (FALSE)
                       func = read_bwb_header4)
   
 
-  ### Errors: STO Rohw_1999-6_2004.xlsx:
-  ### Folder: "K-TL_LSW-Altdaten-Werke Teil 2/Werke Teil 2/Stolpe"
-  ### File: "STO Rohw_1999-6_2004.xlsx
-  ### Sheet: "69 STO Birkenwerder 2001" -> "Keine Proben!
   has_errors <- sapply(labor_header4_list, inherits, "try-error")
+  has_errors
   
   labor_header4_df <- data.table::rbindlist(l = labor_header4_list[!has_errors], 
                                             fill = TRUE)
   
   View(labor_header4_df)
   
-  options(warn = 2)
-  for (i in 11:20) {
-  print(sprintf("File: %s", files_to_import[i]))
-  labor_tmp <- read_bwb_data(files = files_to_import[i])
-  }
-  
   labor <- read_bwb_data(files = files_to_import)
-  
-  View(head(labor))
-  
-  ### Problems:
-  labor[labor$`Datum@NA` == "-1102896000",c("file_name", "sheet_name")]
 
+    View(head(labor))
   
-labor_list <- import_labor(files_to_import, 
-                           export_dir = export_dir, 
-                           func = read_bwb_data)
-  
- has_errors <- unlist(sapply(labor_list, inherits, "try-error"))
-  
- has_no_data <-  unlist(sapply(labor_list, nrow))==0
- 
- dd <- unique(labor$`NA@Datum`)
- View(labor[labor$`NA@Datum` %in% dd[!is.na(dd)],])
- 
  labor_all <- data.table::rbindlist(l = list(x1 = labor, 
                                 x2 = labor_header4_df),
                                 fill = TRUE)
 
 
  
+ labor_all %>% 
+   dplyr::filter(!is.na(DataValue)) %>% 
+   View()
+ 
  View(head(labor_all))
  
- 
- get_files_with_weird_cols <- function (mylist,
-    weird_cols = c("frei@NA", 
-                  "X__1", 
-                  "NO3-@mg/l", 
-                  "Dimethylaminophenazon@Hausmethode@µg/l@NA",
-                  "Carbamazepin@Hausmethode@µg/l@NA", 
-                  "Phenazon@Hausmethode@µg/l@NA",
-                  "Propyphenazon@Hausmethode@µg/l@NA",
-                  "pH-Wert@DIN 38404-C05@-@9.5",
-                  "el. Leitfähigkeit (25 °C)@DIN EN 27888-C08@µS/cm@2000",
-                  "Proben-Nr.@NA@NA@NA",
-                  "el. Leitfähigkeit (25 °C)@DIN EN 27888-C08@µS/cm@NA",
-                  "Eisen@DIN EN 11885-E22@mg/l@NA",
-                  "Mangan@DIN EN 11885-E22@mg/l@NA")) {
- for (weird_col in weird_cols) {
-   org_of_prob <- which(sapply(mylist, 
-                               function(x) any(names(x) %in% weird_col)))
-   
-   if(length(org_of_prob) > 0) {
-   cat(crayon::bold(crayon::red(sprintf("Weird column '%s' found in:\n%s\n
-                                        Path(s):\n%s\n\n", 
-                                        weird_col,
-                                        paste(names(org_of_prob), collapse = "\n"),
-                                        paste(normalizePath(files_to_import[org_of_prob]), 
-                                              collapse = "\n")))))
-   }
- }
-    }
- 
- get_files_with_weird_cols(labor_list)
- get_files_with_weird_cols(labor_header4_list)
- ###weird column 'frei@NA' found in:
- ###BEE_Roh_Rein_1970-1998_TVO_Metalle.xlsx
- ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Beelitzhof
- 
- ###weird column 'X__1' found in:
- ###FRI_Br_GAL_C_Einzelparameter.xlsx
- ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Allgemein
- 
- 
- 
- tmp_list <- labor_list[!has_errors]
- tmp_list <- tmp_list[!has_no_data]
-
- 
- get_datatypes <- function(df, to_sort = FALSE, decreasing = TRUE) {
-   tbl_datatypes <- table(unlist(sapply(df, class)))
-   
-   if (to_sort) tbl_datatypes <- sort(tbl_datatypes, decreasing)
-   
-
-   vec <- c(tbl_datatypes/sum(tbl_datatypes), 
-            "n"=sum(tbl_datatypes))
-   
-   coltype_fraction <- as.data.frame(matrix(data = vec, byrow = TRUE, 
-                                            ncol = length(vec)))
-   names(coltype_fraction) <- names(vec)
-   return(coltype_fraction)
- }
- 
-
- check_datatypes <- function(data_list) {
-   data_df <- data.table::rbindlist(l = lapply(data_list,get_datatypes), 
-                                          fill = TRUE)
-   
-   cbind(data_df, filenames = names(data_list))
- }
- 
- checked_datatypes_df <- check_datatypes(tmp_list)
- 
- 
- labor_df <- data.table::rbindlist(l = tmp_list, fill = TRUE)
-
 
  get_unique_rows <- function(df, col_name, 
                              export = TRUE, 
@@ -303,6 +209,8 @@ labor_list <- import_labor(files_to_import,
  }
  
  date_name <- get_unique_rows(df = labor_all,col_name = "Datum@NA")
+ date_name1 <- get_unique_rows(df = labor_all,col_name = "NA@Datum")
+ date_name2 <- get_unique_rows(df = labor_all,col_name = "Date")
  variable_name <- get_unique_rows(df = labor_all,col_name = "VariableName")
  data_value <- get_unique_rows(df = labor_all,col_name = "DataValue")
  unit_name <- get_unique_rows(df = labor_all,col_name = "UnitName")

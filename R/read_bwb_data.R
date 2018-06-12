@@ -10,7 +10,7 @@ gather_ignore <- function()
   fields <- c(
     "Datum", "KN", "[iI]nterne Nr.", "Name der", "Ort", "Probe", "Pr\u00fcf", 
     "Untersuchung", "Labor", "Jahr", "Galer", "Detail", "Me\u00DF", "Zeit", 
-    "Bezei"
+    "Bezei", "Monat"
   )
   
   kwb.utils::collapsed(fields, "|")
