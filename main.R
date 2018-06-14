@@ -289,7 +289,7 @@ pdf(file = pdf_file,width = 14, height = 9)
                                         col = "werk")) + 
      ggplot2::geom_point() +
      ggplot2::theme_bw() +
-     ggplot2::ggtitle(label = title_label) +
+     ggplot2::ggtitle(label = my_selection) +
      ggplot2::labs(x = "", y = "Jahresmittelwert")
    
    print(g)
