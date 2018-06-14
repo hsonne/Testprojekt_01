@@ -288,6 +288,7 @@ pdf(file = pdf_file,width = 14, height = 9)
                                         y = "mean_DataValue",
                                         col = "werk")) + 
      ggplot2::geom_point() +
+     ggplot2::geom_line() +
      ggplot2::theme_bw() +
      ggplot2::ggtitle(label = my_selection) +
      ggplot2::labs(x = "", y = "Jahresmittelwert")
