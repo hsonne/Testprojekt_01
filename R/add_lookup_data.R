@@ -1,3 +1,12 @@
+get_parameters_meta <- function(path) {
+  
+  `%>%` <- magrittr::`%>%`
+  
+  readxl::read_excel(path, sheet = "nur Parameterliste") %>% 
+  janitor::clean_names()
+}
+
+
 add_para_metadata <- function(df, 
                               lookup_para_path,
                               parameters_path) {
@@ -5,13 +14,12 @@ add_para_metadata <- function(df,
   `%>%` <- magrittr::`%>%`
   
   if(file.exists(lookup_para_path)) {
-    lookup_para <- read.csv(file = lookup_para_path) %>% 
+    lookup_para <- read.csv(file = lookup_para_path, 
+                            stringsAsFactors = FALSE) %>% 
       dplyr::filter_("!is.na(para_id)")
     
     if(length(lookup_para) > 0) {
-      parameters <- readxl::read_excel(path = parameters_path, 
-                                       sheet = "nur Parameterliste") %>% 
-        janitor::clean_names()
+      parameters <- get_parameters_meta(parameters_path)
       
       lookup_para <- lookup_para %>%  
         dplyr::left_join(y = parameters)

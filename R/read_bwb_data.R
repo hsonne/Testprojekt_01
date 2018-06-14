@@ -246,7 +246,8 @@ stop_on_missing_or_inform_on_extra_sheets <- function(has_site_id, file, sheets)
 to_full_metadata_2 <- function(header, file, sheet)
 {
   # Start a metadata table with the Variable name and unit
-  header <- as.data.frame(t(header))
+  header <- as.data.frame(t(header),
+                          stringsAsFactors = FALSE)
   names(header) <- c("VariableName_org", "UnitName_org")
   
   # Extend the metadata      
@@ -264,7 +265,8 @@ to_full_metadata_2 <- function(header, file, sheet)
 to_full_metadata_4 <- function(header, file, sheet)
 {
   # Start a metadata table with the Variable name and unit
-  header <- as.data.frame(t(header))
+  header <- as.data.frame(t(header),
+                          stringsAsFactors = FALSE)
   names(header) <- c("VariableName_org", "Method", "UnitName_org", "Limit_TrinkWV")
   
   # Extend the metadata      

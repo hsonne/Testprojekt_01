@@ -34,7 +34,9 @@ script_paths <- file.path("./R", c(
   "print_table_summary.R",
   "read_bwb_data.R",
   "utils.R",
-  "add_lookup_data.R"
+  "add_lookup_data.R",
+  "get_foerdermengen.R",
+  "copy_lookup_para_file.R"
 ))
 
 # Check if all scripts exist
@@ -51,44 +53,52 @@ paths <- list(
   drive_hauke_home = "<downloads>/Unterstuetzung/Michael",
   downloads = "<home>/Downloads",
   input_dir = "<drive>/02_Daten_Labor_Aufbereitung_02",
-  export_dir = "<drive>/03_ANALYSIS_R/tmp",
+  input_dir_meta = "<input_dir>/META",
+  export_dir = "<drive>/03_ANALYSIS_R/01_data",
+  export_dir_meta = "<export_dir>/META",
   sel_folder = "K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Buch",
   input_dir_sel = "<input_dir>/<sel_folder>",
   export_dir_sel = "<export_dir>/<sel_folder>",
-  results_dir = "<drive>/03_ANALYSIS_R/results",
-  meta_dir = "<export_dir>/META",
-  parameters = "<meta_dir>/2018-06-01 Lab Parameter.xlsx",
-  lookup_para = "<meta_dir>/lookup_para.csv",
-  sites = "<meta_dir>/Info-Altdaten.xlsx",
+  results_dir = "<drive>/03_ANALYSIS_R/02_results",
+  foerdermengen = "<export_dir>/2018-04-27 Rohwasser Bericht - Galeriefördermengen.xlsx",
+  parameters = "<export_dir_meta>/2018-06-01 Lab Parameter.xlsx",
+  lookup_para = "<export_dir_meta>/lookup_para.csv",
+  sites = "<export_dir_meta>/Info-Altdaten.xlsx",
   home = kwb.utils::get_homedir()
 )
 
 paths <- kwb.utils::resolve(paths, drive = "drive_jeansen")
+
+library(dplyr)
+
 
 
 # Set input directory
 input_dir <- kwb.utils::safePath(selectElements(paths, "input_dir"))
 
 # Set directory in which to provide all xlsx files
+if(!dir.exists(paths$export_dir)) {
+  print(sprintf("Creating export directory: %s", paths$export_dir))
+  fs::dir_create(paths$export_dir)
+}
 export_dir <- kwb.utils::safePath(selectElements(paths, "export_dir"))
 
 if (FALSE)
 {
-  # Get location of excelcnv.exe
-  get_excelcnv_exe()
-  
-  
   # Convert xls to xlsx Excel files
   convert_xls_as_xlsx(input_dir, export_dir)
   
-  if (FALSE) {
-  convert_xls_as_xlsx(input_dir = paths$input_dir_sel, 
-                      export_dir = paths$export_dir_sel)
-  }
-  
-  
+
   # Copy remaining already existing .xlsx files in same directory
   copy_xlsx_files(input_dir, export_dir, overwrite = TRUE)
+  
+  copy_lookup_para_file(paths$input_dir_meta, 
+                        paths$export_dir_meta, overwrite = FALSE)
+}
+
+if (FALSE) {
+  convert_xls_as_xlsx(input_dir = paths$input_dir_sel, 
+                      export_dir = paths$export_dir_sel)
 }
 
 # Get all xlsx files to be imported
@@ -164,18 +174,6 @@ Importing %d out of %d files
                             length(files_to_import), 
                             length(files)))))
 
-file_database <- to_file_database(files_to_import)
-
-# files:
-# file_id             file_name folder_id
-# file_01 haesslicher name.xlsx folder_01
-
-# folders:
-# folder_id folder_path
-# - attr(*, "base_dir")
-
-# file_database$files
-# file_database$folders
 
 if (FALSE)
 {
@@ -246,36 +244,63 @@ if (FALSE)
                    parameters_path = paths$parameters)
  
  labor_all_sel <- add_site_metadata(df = labor_all_sel, 
-                   site_path = paths$sites)
+                   site_path = paths$sites) %>% 
+        dplyr::mutate_(year = "as.numeric(format(Date,format = '%Y'))")
    
+ 
 
-pdf_file <- file.path(paths$results_dir, "Zeitreihen.pdf")
+  
+fs::dir_create(paths$results_dir, recursive = TRUE)
 
+
+para_info <- get_parameters_meta(paths$parameters)
+water_types <- c("Reinwasser", "Rohwasser")
+
+
+for (water_type in water_types) {
+pdf_file <- file.path(paths$results_dir, 
+                      sprintf("Zeitreihen_Jahresmittelwerte_Werke_%s.pdf", 
+                              water_type))
+
+cat(sprintf("Creating plot:\n%s\n", pdf_file))
 pdf(file = pdf_file,width = 14, height = 9)
  for (sel_para_id in unique(labor_all_sel$para_id)) {
+   
+  my_selection <- sprintf("%s (%s)",
+                     para_info$para_kurzname[para_info$para_id == sel_para_id],
+                     water_type)
  
  tmp <- labor_all_sel %>%
+   dplyr::filter_(sprintf("prufgegenstand == '%s'", water_type)) %>% 
    dplyr::filter_(.dots = sprintf("para_id == %d", sel_para_id)) %>% 
-   dplyr::mutate_(year = "as.numeric(format(Date,format = '%Y'))") %>% 
    dplyr::group_by_("para_kurzname", "werk", "year") %>% 
    dplyr::summarise_(mean_DataValue = "mean(as.numeric(DataValue), na.rm=TRUE)") %>% 
-   dplyr::filter_("!is.na(werk)") 
+   dplyr::filter_("!is.na(werk)") %>% 
+   dplyr::left_join(y = get_foerdermengen(paths$foerdermengen), 
+                    by = c("werk", "year"))
  
  
- 
+ if (nrow(tmp) > 0) {
+
+   cat(sprintf("for %s\n", my_selection))
+
   g <- ggplot2::ggplot(tmp,mapping = ggplot2::aes_string(x = "year", 
                                         y = "mean_DataValue",
                                         col = "werk")) + 
      ggplot2::geom_point() +
      ggplot2::theme_bw() +
-     ggplot2::ggtitle(tmp$para_kurzname[1]) +
-     ggplot2::labs(x = "", y = "")
+     ggplot2::ggtitle(label = title_label) +
+     ggplot2::labs(x = "", y = "Jahresmittelwert")
    
    print(g)
    
+ } else { 
+   cat(sprintf("not data availabe for %s\n", 
+               my_selection))
+   }
  }
 dev.off()
-
+}
  
  # ggplot2::ggplot(online, ggplot2::aes_string(x = "year",
  #                                             y = "mean_DataValue",
