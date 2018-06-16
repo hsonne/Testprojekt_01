@@ -8,7 +8,7 @@ library(kwb.utils)
 # Names of required packages in alphabetical order
 packages <- c(
   "crayon", "data.table", "devtools", "dplyr", "fs", "readxl", "stringr",
-  "testthat", "tidyr"
+  "testthat", "tidyr", "janitor", "ggplot2"
 )
 
 # Names of installed packages
@@ -33,7 +33,10 @@ script_paths <- file.path("./R", c(
   "metadata.R",
   "print_table_summary.R",
   "read_bwb_data.R",
-  "utils.R"
+  "utils.R",
+  "add_lookup_data.R",
+  "get_foerdermengen.R",
+  "copy_lookup_para_file.R"
 ))
 
 # Check if all scripts exist
@@ -50,38 +53,52 @@ paths <- list(
   drive_hauke_home = "<downloads>/Unterstuetzung/Michael",
   downloads = "<home>/Downloads",
   input_dir = "<drive>/02_Daten_Labor_Aufbereitung_02",
-  export_dir = "<drive>/03_ANALYSIS_R/tmp",
+  input_dir_meta = "<input_dir>/META",
+  export_dir = "<drive>/03_ANALYSIS_R/01_data",
+  export_dir_meta = "<export_dir>/META",
   sel_folder = "K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Buch",
   input_dir_sel = "<input_dir>/<sel_folder>",
   export_dir_sel = "<export_dir>/<sel_folder>",
-  home = get_homedir()
+  results_dir = "<drive>/03_ANALYSIS_R/02_results",
+  foerdermengen = "<export_dir>/2018-04-27 Rohwasser Bericht - Galeriefördermengen.xlsx",
+  parameters = "<export_dir_meta>/2018-06-01 Lab Parameter.xlsx",
+  lookup_para = "<export_dir_meta>/lookup_para.csv",
+  sites = "<export_dir_meta>/Info-Altdaten.xlsx",
+  home = kwb.utils::get_homedir()
 )
 
 paths <- kwb.utils::resolve(paths, drive = "drive_jeansen")
+
+library(dplyr)
+
+
 
 # Set input directory
 input_dir <- kwb.utils::safePath(selectElements(paths, "input_dir"))
 
 # Set directory in which to provide all xlsx files
+if(!dir.exists(paths$export_dir)) {
+  print(sprintf("Creating export directory: %s", paths$export_dir))
+  fs::dir_create(paths$export_dir)
+}
 export_dir <- kwb.utils::safePath(selectElements(paths, "export_dir"))
 
 if (FALSE)
 {
-  # Get location of excelcnv.exe
-  get_excelcnv_exe()
-  
-  
   # Convert xls to xlsx Excel files
   convert_xls_as_xlsx(input_dir, export_dir)
   
-  if (FALSE) {
-  convert_xls_as_xlsx(input_dir = paths$input_dir_sel, 
-                      export_dir = paths$export_dir_sel)
-  }
-  
-  
+
   # Copy remaining already existing .xlsx files in same directory
   copy_xlsx_files(input_dir, export_dir, overwrite = TRUE)
+  
+  copy_lookup_para_file(paths$input_dir_meta, 
+                        paths$export_dir_meta, overwrite = FALSE)
+}
+
+if (FALSE) {
+  convert_xls_as_xlsx(input_dir = paths$input_dir_sel, 
+                      export_dir = paths$export_dir_sel)
 }
 
 # Get all xlsx files to be imported
@@ -90,7 +107,7 @@ files <- dir(export_dir, ".xlsx", recursive = TRUE, full.names = TRUE)
 
 files_meta <- c("Meta Info", 
                 "Header ident",
-                "Parameter ident.xlsx",
+                "Parameter ident",
                 "Parameter",
                 "Info-Altdaten", 
                 "Brandenburg_Parameter_BWB_Stolpe", 
@@ -98,9 +115,18 @@ files_meta <- c("Meta Info",
                 "2005-10BeschilderungProbenahmestellenGWWIII", 
                 "Bezeichnungen der Reinwasserstellen",
                 "ReinwasserNomenklatur",
-                "Info zu Altdaten 1970-1998"
+                "Info zu Altdaten 1970-1998",
+                "2018-06-01 Lab Parameter"
                 )
 
+
+files_header_1_meta <- c("FRI_Br_GAL_C_Einzelparameter",
+                         "FRI_Roh_Rein_NH4+NO3_2001-2003",
+                         "MTBE_2003-11_2004",
+                         "Reinwasser_2003_Fe_Mn", ## unclean
+                         "VC_CN_in Brunnen bis Aug_2005 ",## unclean
+                         "Wuhlheide_Beelitzhof_Teildaten" ## unclean
+                         )
 
 files_header_1 <- c("2018-04-11 Chlorid in Brunnen - Übersicht",
                     "2018-04-27 LIMS Reiw & Rohw Sammel ",
@@ -112,19 +138,27 @@ files_header_4 <- c("STO Rohw_1999-6_2004",
                     "KAU_1999-Okt2003")
                       
 
-files_to_ignore <- c(files_meta, files_header_1, files_header_4)
+files_to_ignore <- c(files_meta, files_header_1, files_header_1_meta, 
+                     files_header_4)
 
 
 cat(crayon::bgWhite(sprintf("
 ###############################################################################\n
-Currently %d files are ignored for import:\n
+Currently %d files are ignored for import using function read_bwb_data():\n
 Meta files:\n%s\n
+Header1 (with manually added, but still 'unclean' metadata):\n%s\n
 Header1 (without metadata):\n%s\n
+
+###############################################################################
+# Manual selection: %d files with 4 headers are imported with: read_bwb_header4() 
+###############################################################################\n
 Header4:\n%s\n
 ##############################################################################", 
       length(files_to_ignore), 
       paste(files_meta, collapse = "\n"), 
+      paste(files_header_1_meta, collapse = "\n"), 
       paste(files_header_1, collapse = "\n"), 
+      length(files_header_4),
       paste(files_header_4, collapse = "\n"))))
 
 
@@ -140,18 +174,6 @@ Importing %d out of %d files
                             length(files_to_import), 
                             length(files)))))
 
-file_database <- to_file_database(files_to_import)
-
-# files:
-# file_id             file_name folder_id
-# file_01 haesslicher name.xlsx folder_01
-
-# folders:
-# folder_id folder_path
-# - attr(*, "base_dir")
-
-file_database$files
-file_database$folders
 
 if (FALSE)
 {
@@ -161,126 +183,141 @@ if (FALSE)
   labor_header4_list <- import_labor(files = files_header_4,
                       export_dir = export_dir, 
                       func = read_bwb_header4)
-  
-
-  ### Errors: STO Rohw_1999-6_2004.xlsx:
-  ### Folder: "K-TL_LSW-Altdaten-Werke Teil 2/Werke Teil 2/Stolpe"
-  ### File: "STO Rohw_1999-6_2004.xlsx
-  ### Sheet: "69 STO Birkenwerder 2001" -> "Keine Proben!
+ 
   has_errors <- sapply(labor_header4_list, inherits, "try-error")
+  has_errors
   
-  labor_header4_df <- data.table::rbindlist(l = labor_header4_list[!has_errors], 
+    labor_header4_df <- data.table::rbindlist(l = labor_header4_list[!has_errors], 
                                             fill = TRUE)
-  
-  View(labor_header4_df)
-  
-  options(warn = 2)
-  for (i in 11:20) {
-  print(sprintf("File: %s", files_to_import[i]))
-  labor_tmp <- read_bwb_data(files = files_to_import[i])
-  }
+   
+  # files_header_1_meta <- files[stringr::str_detect(string = files ,
+  #                                             pattern = paste0(files_header_1_meta,collapse = "|"))]
+  # 
+  # 
+  # labor_list_1meta <- import_labor(files = files_header_1_meta,
+  #                                    export_dir = export_dir,
+  #                                    func = read_bwb_header1_meta)
+  # 
+  # has_errors <- sapply(labor_list_1meta, inherits, "try-error")
+  # has_errors
+  # 
+  # labor_list_1meta <- data.table::rbindlist(l = labor_list_1meta[!has_errors],
+  #                                           fill = TRUE)
+  # 
+  # labor_list_1meta %>%  filter(is.na(sheet_name)) %>%  View()
+  # 
+  # View(labor_list_1meta)
   
   labor <- read_bwb_data(files = files_to_import)
-  
-  View(head(labor))
-  
-  ### Problems:
-  labor[labor$`Datum@NA` == "-1102896000",c("file_name", "sheet_name")]
 
+  #View(head(labor))
   
-labor_list <- import_labor(files_to_import, 
-                           export_dir = export_dir, 
-                           func = read_bwb_data)
-  
- has_errors <- unlist(sapply(labor_list, inherits, "try-error"))
-  
- has_no_data <-  unlist(sapply(labor_list, nrow))==0
- 
- dd <- unique(labor$`NA@Datum`)
- View(labor[labor$`NA@Datum` %in% dd[!is.na(dd)],])
- 
  labor_all <- data.table::rbindlist(l = list(x1 = labor, 
                                 x2 = labor_header4_df),
                                 fill = TRUE)
+ 
+ labor_all <- labor_all %>% 
+              dplyr::filter_("!is.na(DataValue)") 
+ 
 
-
+ if(any(names(labor_all) %in% "Date")) {
+   stop("Date already defined. Please rename all 'Date' column headers in 
+        to the original ones (i.e. Probenahme or Datum)")
+ } else {
+  labor_all <- labor_all %>% 
+   dplyr::mutate_("Date" = "dplyr::if_else(condition = !is.na(Datum),
+        true = Datum, 
+        false =  Probenahme)")  %>%  
+    ### Some "Datum" rentries are missing in;
+    ###K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Kaulsdorf\KAU_1999-Okt2003.xlsx
+    ### sheets: 66 KAU Rein 1999-2000, 65 KAU NordSüd 1999-2000
+    dplyr::filter_("!is.na(Date)") 
+ }
  
- View(head(labor_all))
+ labor_all <- labor_all %>% 
+      dplyr::filter_("!is.na(VariableName_org)")
  
  
- get_files_with_weird_cols <- function (mylist,
-    weird_cols = c("frei@NA", 
-                  "X__1", 
-                  "NO3-@mg/l", 
-                  "Dimethylaminophenazon@Hausmethode@µg/l@NA",
-                  "Carbamazepin@Hausmethode@µg/l@NA", 
-                  "Phenazon@Hausmethode@µg/l@NA",
-                  "Propyphenazon@Hausmethode@µg/l@NA",
-                  "pH-Wert@DIN 38404-C05@-@9.5",
-                  "el. Leitfähigkeit (25 °C)@DIN EN 27888-C08@µS/cm@2000",
-                  "Proben-Nr.@NA@NA@NA",
-                  "el. Leitfähigkeit (25 °C)@DIN EN 27888-C08@µS/cm@NA",
-                  "Eisen@DIN EN 11885-E22@mg/l@NA",
-                  "Mangan@DIN EN 11885-E22@mg/l@NA")) {
- for (weird_col in weird_cols) {
-   org_of_prob <- which(sapply(mylist, 
-                               function(x) any(names(x) %in% weird_col)))
+ 
+ labor_all_sel <- add_para_metadata(df = labor_all, 
+                  lookup_para_path = paths$lookup_para,
+                   parameters_path = paths$parameters)
+ 
+ labor_all_sel <- add_site_metadata(df = labor_all_sel, 
+                   site_path = paths$sites) %>% 
+        dplyr::mutate_(year = "as.numeric(format(Date,format = '%Y'))")
    
-   if(length(org_of_prob) > 0) {
-   cat(crayon::bold(crayon::red(sprintf("Weird column '%s' found in:\n%s\n
-                                        Path(s):\n%s\n\n", 
-                                        weird_col,
-                                        paste(names(org_of_prob), collapse = "\n"),
-                                        paste(normalizePath(files_to_import[org_of_prob]), 
-                                              collapse = "\n")))))
+ 
+
+  
+fs::dir_create(paths$results_dir, recursive = TRUE)
+
+
+para_info <- get_parameters_meta(paths$parameters)
+water_types <- c("Reinwasser", "Rohwasser")
+
+
+for (water_type in water_types) {
+pdf_file <- file.path(paths$results_dir, 
+                      sprintf("Zeitreihen_Jahresmittelwerte_Werke_%s.pdf", 
+                              water_type))
+
+cat(sprintf("Creating plot:\n%s\n", pdf_file))
+pdf(file = pdf_file,width = 14, height = 9)
+ for (sel_para_id in unique(labor_all_sel$para_id)) {
+   
+  my_selection <- sprintf("%s (%s)",
+                     para_info$para_kurzname[para_info$para_id == sel_para_id],
+                     water_type)
+ 
+ tmp <- labor_all_sel %>%
+   dplyr::filter_(sprintf("prufgegenstand == '%s'", water_type)) %>% 
+   dplyr::filter_(.dots = sprintf("para_id == %d", sel_para_id)) %>% 
+   dplyr::group_by_("para_kurzname", "werk", "year") %>% 
+   dplyr::summarise_(mean_DataValue = "mean(as.numeric(DataValue), na.rm=TRUE)") %>% 
+   dplyr::filter_("!is.na(werk)") %>% 
+   dplyr::left_join(y = get_foerdermengen(paths$foerdermengen), 
+                    by = c("werk", "year"))
+ 
+ 
+ if (nrow(tmp) > 0) {
+
+   cat(sprintf("for %s\n", my_selection))
+
+  g <- ggplot2::ggplot(tmp,mapping = ggplot2::aes_string(x = "year", 
+                                        y = "mean_DataValue",
+                                        col = "werk")) + 
+     ggplot2::geom_point() +
+     ggplot2::geom_line() +
+     ggplot2::theme_bw() +
+     ggplot2::ggtitle(label = my_selection) +
+     ggplot2::labs(x = "", y = "Jahresmittelwert")
+   
+   print(g)
+   
+ } else { 
+   cat(sprintf("not data availabe for %s\n", 
+               my_selection))
    }
  }
-    }
+dev.off()
+}
  
- get_files_with_weird_cols(labor_list)
- get_files_with_weird_cols(labor_header4_list)
- ###weird column 'frei@NA' found in:
- ###BEE_Roh_Rein_1970-1998_TVO_Metalle.xlsx
- ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Beelitzhof
- 
- ###weird column 'X__1' found in:
- ###FRI_Br_GAL_C_Einzelparameter.xlsx
- ### Path(s): K-TL_LSW-Altdaten-Werke Teil 1\Werke Teil 1\Allgemein
- 
- 
- 
- tmp_list <- labor_list[!has_errors]
- tmp_list <- tmp_list[!has_no_data]
-
- 
- get_datatypes <- function(df, to_sort = FALSE, decreasing = TRUE) {
-   tbl_datatypes <- table(unlist(sapply(df, class)))
-   
-   if (to_sort) tbl_datatypes <- sort(tbl_datatypes, decreasing)
-   
-
-   vec <- c(tbl_datatypes/sum(tbl_datatypes), 
-            "n"=sum(tbl_datatypes))
-   
-   coltype_fraction <- as.data.frame(matrix(data = vec, byrow = TRUE, 
-                                            ncol = length(vec)))
-   names(coltype_fraction) <- names(vec)
-   return(coltype_fraction)
- }
- 
-
- check_datatypes <- function(data_list) {
-   data_df <- data.table::rbindlist(l = lapply(data_list,get_datatypes), 
-                                          fill = TRUE)
-   
-   cbind(data_df, filenames = names(data_list))
- }
- 
- checked_datatypes_df <- check_datatypes(tmp_list)
- 
- 
- labor_df <- data.table::rbindlist(l = tmp_list, fill = TRUE)
-
+ # ggplot2::ggplot(online, ggplot2::aes_string(x = "year",
+ #                                             y = "mean_DataValue",
+ #                                             col = "SiteName")) +
+ #   ggforce::facet_wrap_paginate(~werk,
+ #                                nrow = 1,
+ #                                ncol = 1,
+ #                                scales = "free_y",
+ #                                page = i) +
+ #   ggplot2::geom_point() +  
+ #   ggplot2::theme_bw(base_size = 20) +
+ #   ggplot2::theme(legend.position = "top"
+ #                  , strip.text.x = element_text(face = "bold")
+ #                  , legend.title = element_blank()
+ #   )
+ # 
 
  get_unique_rows <- function(df, col_name, 
                              export = TRUE, 
@@ -290,22 +327,33 @@ labor_list <- import_labor(files_to_import,
 
 
  row_values_df <- df %>% 
-   dplyr::group_by_(.dots = as.name(col_name)) %>%  
+   dplyr::group_by_(.dots = col_name) %>%  
    dplyr::summarise(n = n())
- names(row_values_df) <- c(col_name, "n") 
+ 
  
  if (export) write.csv(x = row_values_df, 
                        file = sprintf("%s/%s.csv", 
                                       expDir, 
-                                      col_name),
+                                      paste0(col_name, collapse = "_")),
                        row.names = FALSE)
  return(row_values_df)
  }
  
- date_name <- get_unique_rows(df = labor_all,col_name = "Datum@NA")
- variable_name <- get_unique_rows(df = labor_all,col_name = "VariableName")
+
+labor_all$Year_num <- as.numeric(format(labor_all$Date,format = "%Y"))
+ 
+ 
+ samples_per_year <- get_unique_rows(df = labor_all,col_name = c("Year_num"))
+ plot(samples_per_year$Year_num, samples_per_year$n)
+ dates <- get_unique_rows(df = labor_all,col_name = c("Date"))
+ plot(dates$Date, dates$n)
+ site_id <- get_unique_rows(df = labor_all,col_name = c("SiteID"))
+ date_name <- get_unique_rows(df = labor_all,col_name = c("Date", "file_name", "sheet_name"))
+ date_name1 <- get_unique_rows(df = labor_all,col_name = c("Datum", "file_name", "sheet_name"))
+ date_name2 <- get_unique_rows(df = labor_all,col_name = c("Probenahme", "file_name","sheet_name"))
+ variable_name <- get_unique_rows(df = labor_all,col_name = "VariableName_org")
  data_value <- get_unique_rows(df = labor_all,col_name = "DataValue")
- unit_name <- get_unique_rows(df = labor_all,col_name = "UnitName")
+ unit_name <- get_unique_rows(df = labor_all,col_name = "UnitName_org")
  
  col_names <- sort(names(labor_all))
 
