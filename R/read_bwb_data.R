@@ -1,5 +1,5 @@
-# get_SiteID -------------------------------------------------------------------
-get_SiteID <- function(string, pattern = "^[0-9]{1,4}")
+# get_site_id -------------------------------------------------------------------
+get_site_id <- function(string, pattern = "^[0-9]{1,4}")
 {
   as.numeric(stringr::str_extract(string, pattern))
 }
@@ -10,7 +10,7 @@ gather_ignore <- function()
   fields <- c(
     "Datum", "KN", "[iI]nterne Nr.", "Name der", "Ort", "Probe", "Pr\u00fcf", 
     "Untersuchung", "Labor", "Jahr", "Galer", "Detail", "Me\u00DF", "Zeit", 
-    "Bezei"
+    "Bezei", "Monat"
   )
   
   kwb.utils::collapsed(fields, "|")
@@ -51,6 +51,8 @@ read_bwb_header1_meta <- function(
     
     # Filter for the metadata given for the current sheet
     metadata <- all_metadata[all_metadata$Sheet == sheet, ]
+    metadata$file_name <- file
+    metadata$sheet_name <- sheet
     
     # Load the data from the current sheet
     tmp_data <- readxl::read_excel(file, sheet, guess_max = 2^20)
@@ -65,7 +67,7 @@ read_bwb_header1_meta <- function(
     keep <- stringr::str_detect(columns_clean, keep_pattern)
     
     # Convert the data from wide to long format
-    gather_and_join_1(tmp_data, columns_clean[keep], metadata, dbg = TRUE)
+    gather_and_join_1(tmp_data, columns_clean[keep], metadata, dbg = TRUE) 
   })
   
   # Merge all data frames in long format  
@@ -139,7 +141,7 @@ read_bwb_header2 <- function(
             range = cellranger::cell_limits(ul = c(skip+1,1),
                                             lr = c(NA,nrow(header))))
     
-    indices <- match(names(tmp_content), header$id)
+    indices <- match(names(tmp_content), header$col_id)
     
     names(tmp_content) <- header$key[indices]
     
@@ -194,7 +196,7 @@ read_bwb_header4 <- function(
           range = cellranger::cell_limits(ul = c(skip+1,1),
                                           lr = c(NA,nrow(header))))
     
-    indices <- match(names(tmp_content), header$id)
+    indices <- match(names(tmp_content), header$col_id)
     
     names(tmp_content) <- header$key[indices]
     
@@ -244,32 +246,36 @@ stop_on_missing_or_inform_on_extra_sheets <- function(has_site_id, file, sheets)
 to_full_metadata_2 <- function(header, file, sheet)
 {
   # Start a metadata table with the Variable name and unit
-  header <- as.data.frame(t(header))
-  names(header) <- c("VariableName", "UnitName")
+  header <- as.data.frame(t(header),
+                          stringsAsFactors = FALSE)
+  names(header) <- c("VariableName_org", "UnitName_org")
   
   # Extend the metadata      
   header$key <- kwb.utils::pasteColumns(header, sep = "@")
-  header$id <- rownames(header)
+  header$key <- stringr::str_replace(header$key, "@NA$","")
+  header$col_id <- rownames(header)
   header$file_name <- normalizePath(file)
   header$sheet_name <- sheet
-  header$SiteID <- get_SiteID(sheet)
+  header$site_id <- get_site_id(sheet)
 
   header  
 }
 
-# to_full_metadata2 -------------------------------------------------------------
+# to_full_metadata4 -------------------------------------------------------------
 to_full_metadata_4 <- function(header, file, sheet)
 {
   # Start a metadata table with the Variable name and unit
-  header <- as.data.frame(t(header))
-  names(header) <- c("VariableName", "Method", "UnitName", "DetectionLimit")
+  header <- as.data.frame(t(header),
+                          stringsAsFactors = FALSE)
+  names(header) <- c("VariableName_org", "Method", "UnitName_org", "Limit_TrinkWV")
   
   # Extend the metadata      
   header$key <- kwb.utils::pasteColumns(header, sep = "@")
-  header$id <- rownames(header)
+  header$key <- stringr::str_replace(header$key, "@NA@NA@NA$","")
+  header$col_id <- rownames(header)
   header$file_name <- normalizePath(file)
   header$sheet_name <- sheet
-  header$SiteID <- get_SiteID(sheet)
+  header$site_id <- get_site_id(sheet)
   
   header  
 }
@@ -308,10 +314,10 @@ gather_and_join_1 <- function(tmp_data, columns_keep, metadata, dbg = FALSE)
   kwb.utils::printIf(dbg, columns_keep)
 
   tidyr::gather_(
-    data = tmp_data, key_col = "VariableName", value_col = "DataValue", 
+    data = tmp_data, key_col = "VariableName_org", value_col = "DataValue", 
     gather_cols = setdiff(names(tmp_data), columns_keep)
   ) %>% 
-    dplyr::left_join(y = metadata, by = c(VariableName = "Name"))
+    dplyr::left_join(y = metadata, by = c(VariableName_org = "Name"))
 }
 
 # gather_and_join_2 ------------------------------------------------------------
