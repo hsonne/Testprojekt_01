@@ -31,7 +31,7 @@ gather_ignore_clean <- function()
 
 # read_bwb_header1_meta --------------------------------------------------------
 read_bwb_header1_meta <- function(
-  file, meta_pattern = "META", keep_pattern = gather_ignore_clean()
+  file, meta_pattern = "META", keep_pattern = gather_ignore()
 )
 {
   # Get the names of the sheets in the Excel workbook
@@ -335,7 +335,6 @@ gather_and_join_2 <- function(tmp_content, columns_keep, header)
 # read_bwb_data ----------------------------------------------------------------
 read_bwb_data <- function(
   files, meta_pattern = "META", keep_pattern = gather_ignore(), 
-  keep_pattern_clean = gather_ignore_clean(),
   site_id_pattern = "^[0-9]{1,4}", dbg = TRUE
 )
 {
@@ -349,7 +348,7 @@ read_bwb_data <- function(
 
     if (any(is_meta)) {
       
-      header <- read_bwb_header1_meta(file, meta_pattern, keep_pattern_clean)
+      header <- read_bwb_header1_meta(file, meta_pattern, keep_pattern)
       
       if (exists("header") && nrow(header)) {
         
