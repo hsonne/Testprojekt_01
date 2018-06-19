@@ -190,23 +190,29 @@ if (FALSE)
     labor_header4_df <- data.table::rbindlist(l = labor_header4_list[!has_errors], 
                                             fill = TRUE)
    
-  # files_header_1_meta <- files[stringr::str_detect(string = files ,
-  #                                             pattern = paste0(files_header_1_meta,collapse = "|"))]
-  # 
-  # 
-  # labor_list_1meta <- import_labor(files = files_header_1_meta,
-  #                                    export_dir = export_dir,
-  #                                    func = read_bwb_header1_meta)
-  # 
-  # has_errors <- sapply(labor_list_1meta, inherits, "try-error")
-  # has_errors
-  # 
-  # labor_list_1meta <- data.table::rbindlist(l = labor_list_1meta[!has_errors],
-  #                                           fill = TRUE)
-  # 
-  # labor_list_1meta %>%  filter(is.na(sheet_name)) %>%  View()
-  # 
-  # View(labor_list_1meta)
+  files_header_1_meta <- files[stringr::str_detect(string = files ,
+                                              pattern = paste0(files_header_1_meta,collapse = "|"))]
+
+
+  labor_list_1meta <- import_labor(files = files_header_1_meta,
+                                     export_dir = export_dir,
+                                     func = read_bwb_header1_meta)
+  
+
+  has_errors <- sapply(labor_list_1meta, inherits, "try-error")
+  has_errors
+
+  labor_df_1meta <- data.table::rbindlist(l = labor_list_1meta[!has_errors],
+                                            fill = TRUE)
+  
+  cond <- labor_df_1meta$OriginalName %in% c("el. Leitfähigkeit (25 °C)", "Chlorid", "Sulfat")
+  labor_df_1meta[cond & !is.na(labor_df_1meta$DataValue), ] %>%  
+    dplyr::group_by(OriginalName, Meßstelle) %>% 
+    dplyr::summarise(n = n())
+
+  labor_list_1meta %>%  filter(is.na(sheet_name)) %>%  View()
+
+  View(labor_list_1meta)
   
   labor <- read_bwb_data(files = files_to_import)
 
@@ -246,10 +252,8 @@ if (FALSE)
  labor_all_sel <- add_site_metadata(df = labor_all_sel, 
                    site_path = paths$sites) %>% 
         dplyr::mutate_(year = "as.numeric(format(Date,format = '%Y'))")
-   
- 
 
-  
+ 
 fs::dir_create(paths$results_dir, recursive = TRUE)
 
 
