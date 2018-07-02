@@ -45,8 +45,11 @@ script_paths <- sapply(script_paths, safePath)
 # Source all scripts
 sourceScripts(script_paths)
 
+
 # Define paths and resolve placeholders
 paths <- list(
+  drive_grw = file.path("//medusa/projekte$/AUFTRAEGE/Rahmenvertrag GRW-WV", 
+  "Data and documents/Versalzung/Daten_Labor/Analyse"),
   drive_jeansen = "//medusa/projekte$/Z-Exchange/Jeansen",
   drive_stick = "F:",
   drive_c = "C:/Jeansen",
@@ -67,7 +70,7 @@ paths <- list(
   home = kwb.utils::get_homedir()
 )
 
-paths <- kwb.utils::resolve(paths, drive = "drive_jeansen")
+paths <- kwb.utils::resolve(paths, drive = "drive_grw")
 
 library(dplyr)
 
