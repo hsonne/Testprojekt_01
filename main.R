@@ -256,6 +256,9 @@ if (FALSE)
 
  
 fs::dir_create(paths$results_dir, recursive = TRUE)
+export_data <- file.path(paths$results_dir, "labor_all_sel.csv") 
+print(sprintf("Export data to: %s", export_data))
+write.csv2(labor_all_sel, export_data)
 
 
 para_info <- get_parameters_meta(paths$parameters)
