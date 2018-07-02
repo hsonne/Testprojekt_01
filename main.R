@@ -47,28 +47,22 @@ sourceScripts(script_paths)
 
 # Define paths and resolve placeholders
 paths <- list(
-  drive_grw = file.path("//medusa/processing/geosalz/BWB_Labor"),
-  drive_jeansen = "//medusa/projekte$/Z-Exchange/Jeansen",
-  drive_stick = "F:",
-  drive_c = "C:/Jeansen",
-  drive_hauke_home = "<downloads>/Unterstuetzung/Michael",
-  downloads = "<home>/Downloads",
-  input_dir = "<drive>/02_Daten_Labor_Aufbereitung_02",
+  root_server = "//medusa", 
+  project = "geosalz", 
+  processing = "<root>/processing/<project>", 
+  input_dir = "<processing>/precleaned-data/v0.2",
   input_dir_meta = "<input_dir>/META",
-  export_dir = "<drive>/03_ANALYSIS_R/01_data",
+  export_dir = "<processing>/precleaned-data/v0.3",
   export_dir_meta = "<export_dir>/META",
-  sel_folder = "K-TL_LSW-Altdaten-Werke Teil 1/Werke Teil 1/Buch",
-  input_dir_sel = "<input_dir>/<sel_folder>",
-  export_dir_sel = "<export_dir>/<sel_folder>",
-  results_dir = "<drive>/03_ANALYSIS_R/02_results",
+  cleaned_data_dir = "<processing>/cleaned-data",
+  results_dir = "<processing>/results",
   foerdermengen = "<export_dir>/2018-04-27 Rohwasser Bericht - Galeriefördermengen.xlsx",
   parameters = "<export_dir_meta>/2018-06-01 Lab Parameter.xlsx",
   lookup_para = "<export_dir_meta>/lookup_para.csv",
-  sites = "<export_dir_meta>/Info-Altdaten.xlsx",
-  home = kwb.utils::get_homedir()
+  sites = "<export_dir_meta>/Info-Altdaten.xlsx"
 )
 
-paths <- kwb.utils::resolve(paths, drive = "drive_grw")
+paths <- kwb.utils::resolve(paths, root = "root_server")
 
 library(dplyr)
 
@@ -121,6 +115,8 @@ files_meta <- c("Meta Info",
                 )
 
 
+
+
 files_header_1_meta <- c("FRI_Br_GAL_C_Einzelparameter",
                          "FRI_Roh_Rein_NH4+NO3_2001-2003",
                          "MTBE_2003-11_2004",
@@ -139,14 +135,17 @@ files_header_4 <- c("STO Rohw_1999-6_2004",
                     "KAU_1999-Okt2003")
                       
 
+files_archive <- "Siebert"
+
 files_to_ignore <- c(files_meta, files_header_1, files_header_1_meta, 
-                     files_header_4)
+                     files_header_4, files_archive)
 
 
 cat(crayon::bgWhite(sprintf("
 ###############################################################################\n
 Currently %d files are ignored for import using function read_bwb_data():\n
 Meta files:\n%s\n
+Archive data:\n%s\n
 Header1 (with manually added, but still 'unclean' metadata):\n%s\n
 Header1 (without metadata):\n%s\n
 
@@ -157,6 +156,7 @@ Header4:\n%s\n
 ##############################################################################", 
       length(files_to_ignore), 
       paste(files_meta, collapse = "\n"), 
+      paste(files_archive, collapse = "\n"), 
       paste(files_header_1_meta, collapse = "\n"), 
       paste(files_header_1, collapse = "\n"), 
       length(files_header_4),
@@ -211,9 +211,9 @@ if (FALSE)
     dplyr::group_by(OriginalName, Meßstelle) %>% 
     dplyr::summarise(n = n())
 
-  labor_list_1meta %>%  filter(is.na(sheet_name)) %>%  View()
-
-  View(labor_list_1meta)
+  # labor_list_1meta %>%  filter(is.na(sheet_name)) %>%  View()
+  # 
+  # View(labor_list_1meta)
   
   labor <- read_bwb_data(files = files_to_import)
 
@@ -255,10 +255,19 @@ if (FALSE)
         dplyr::mutate_(year = "as.numeric(format(Date,format = '%Y'))")
 
  
+fs::dir_create(paths$cleaned_data_dir, recursive = TRUE)
+print(sprintf("Export cleaned data to: %s", paths$cleaned_data_dir))
+write.csv2(labor_all_sel, 
+           file.path(paths$cleaned_data_dir, "labor_all_sel.csv"), 
+           row.names = FALSE)
+write.csv2(get_foerdermengen(paths$foerdermengen), 
+           file = file.path(paths$cleaned_data_dir, "foerdermengen_ww.csv"), 
+           row.names = FALSE) 
+ 
+ 
 fs::dir_create(paths$results_dir, recursive = TRUE)
-export_data <- file.path(paths$results_dir, "labor_all_sel.csv") 
-print(sprintf("Export data to: %s", export_data))
-write.csv2(labor_all_sel, export_data)
+print(sprintf("Export results (e.g. plots) to: %s", paths$results_dir))
+
 
 
 para_info <- get_parameters_meta(paths$parameters)
