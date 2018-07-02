@@ -45,11 +45,9 @@ script_paths <- sapply(script_paths, safePath)
 # Source all scripts
 sourceScripts(script_paths)
 
-
 # Define paths and resolve placeholders
 paths <- list(
-  drive_grw = file.path("//medusa/projekte$/AUFTRAEGE/Rahmenvertrag GRW-WV", 
-  "Data and documents/Versalzung/Daten_Labor/Analyse"),
+  drive_grw = file.path("//medusa/processing/GeoSalz/BWB_Labor"),
   drive_jeansen = "//medusa/projekte$/Z-Exchange/Jeansen",
   drive_stick = "F:",
   drive_c = "C:/Jeansen",
