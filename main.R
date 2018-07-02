@@ -47,7 +47,7 @@ sourceScripts(script_paths)
 
 # Define paths and resolve placeholders
 paths <- list(
-  drive_grw = file.path("//medusa/processing/GeoSalz/BWB_Labor"),
+  drive_grw = file.path("//medusa/processing/geosalz/BWB_Labor"),
   drive_jeansen = "//medusa/projekte$/Z-Exchange/Jeansen",
   drive_stick = "F:",
   drive_c = "C:/Jeansen",
@@ -308,6 +308,7 @@ pdf(file = pdf_file,width = 14, height = 9)
 dev.off()
 }
  
+
  # ggplot2::ggplot(online, ggplot2::aes_string(x = "year",
  #                                             y = "mean_DataValue",
  #                                             col = "SiteName")) +
@@ -446,8 +447,6 @@ labor_all$Year_num <- as.numeric(format(labor_all$Date,format = "%Y"))
   sum(unlist(sapply(labor_header1_meta)))
   
   packrat::snapshot()
-  
-  # Tests
-  read_bwb_header2(file = files[1])
+
 
 }
