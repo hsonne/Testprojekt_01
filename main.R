@@ -47,9 +47,9 @@ sourceScripts(script_paths)
 
 # Define paths and resolve placeholders
 paths <- list(
-  root_server = "//medusa", 
+  root_server = "//medusa/processing", 
   project = "geosalz", 
-  processing = "<root>/processing/<project>", 
+  processing = "<root>/<project>", 
   input_dir = "<processing>/precleaned-data/v0.2",
   input_dir_meta = "<input_dir>/META",
   export_dir = "<processing>/precleaned-data/v0.3",
@@ -63,6 +63,9 @@ paths <- list(
 )
 
 paths <- kwb.utils::resolve(paths, root = "root_server")
+#paths <- kwb.utils::resolve(paths, root = "C:/projects")
+
+
 
 library(dplyr)
 
@@ -246,23 +249,27 @@ if (FALSE)
  
  
  
- labor_all_sel <- add_para_metadata(df = labor_all, 
-                  lookup_para_path = paths$lookup_para,
-                   parameters_path = paths$parameters)
+ labordaten_ww <- add_para_metadata(df = labor_all, 
+                                    lookup_para_path = paths$lookup_para,
+                                    parameters_path = paths$parameters)
  
- labor_all_sel <- add_site_metadata(df = labor_all_sel, 
-                   site_path = paths$sites) %>% 
-        dplyr::mutate_(year = "as.numeric(format(Date,format = '%Y'))")
-
+ labordaten_ww <- add_site_metadata(df = labor_all_sel, 
+                                    site_path = paths$sites) %>% 
+   dplyr::mutate_(year = "as.numeric(format(Date,format = '%Y'))",
+                  DataValue = "as.numeric(DataValue)")
  
-fs::dir_create(paths$cleaned_data_dir, recursive = TRUE)
-print(sprintf("Export cleaned data to: %s", paths$cleaned_data_dir))
-write.csv2(labor_all_sel, 
-           file.path(paths$cleaned_data_dir, "labor_all_sel.csv"), 
-           row.names = FALSE)
-write.csv2(get_foerdermengen(paths$foerdermengen), 
-           file = file.path(paths$cleaned_data_dir, "foerdermengen_ww.csv"), 
-           row.names = FALSE) 
+ 
+ fs::dir_create(paths$cleaned_data_dir, recursive = TRUE)
+ print(sprintf("Export cleaned data to: %s", paths$cleaned_data_dir))
+ foerdermengen_ww <- get_foerdermengen(paths$foerdermengen)
+ save(labordaten_ww, foerdermengen_ww,
+      file = file.path(paths$cleaned_data_dir, "cleaned-data.Rds"))
+ write.csv2(labordaten_ww, 
+            file.path(paths$cleaned_data_dir, "labordaten_ww.csv"), 
+            row.names = FALSE)
+ write.csv2(foerdermengen_ww, 
+            file = file.path(paths$cleaned_data_dir, "foerdermengen_ww.csv"), 
+            row.names = FALSE) 
  
  
 fs::dir_create(paths$results_dir, recursive = TRUE)
