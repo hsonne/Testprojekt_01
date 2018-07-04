@@ -54,7 +54,7 @@ paths <- list(
   export_dir = "<processing>/precleaned-data/v0.3",
   export_dir_meta = "<export_dir>/META",
   cleaned_data_dir = "<processing>/cleaned-data",
-  results_dir = "<processing>/results",
+  figures_dir = "<processing>/figures",
   foerdermengen = "<export_dir>/2018-04-27 Rohwasser Bericht - Galeriefördermengen.xlsx",
   parameters = "<export_dir_meta>/2018-06-01 Lab Parameter.xlsx",
   lookup_para = "<export_dir_meta>/lookup_para.csv",
@@ -310,8 +310,8 @@ if (FALSE) {
   )
 
 
-  fs::dir_create(paths$results_dir, recursive = TRUE)
-  print(sprintf("Export results (e.g. plots) to: %s", paths$results_dir))
+  fs::dir_create(paths$figures_dir, recursive = TRUE)
+  print(sprintf("Export figures/plots to: %s", paths$figures_dir))
 
 
 
@@ -321,7 +321,7 @@ if (FALSE) {
 
   for (water_type in water_types) {
     pdf_file <- file.path(
-      paths$results_dir,
+      paths$figures_dir,
       sprintf(
         "Zeitreihen_Jahresmittelwerte_Werke_%s.pdf",
         water_type
@@ -373,23 +373,6 @@ if (FALSE) {
     }
     dev.off()
   }
-
-
-  # ggplot2::ggplot(online, ggplot2::aes_string(x = "year",
-  #                                             y = "mean_DataValue",
-  #                                             col = "SiteName")) +
-  #   ggforce::facet_wrap_paginate(~werk,
-  #                                nrow = 1,
-  #                                ncol = 1,
-  #                                scales = "free_y",
-  #                                page = i) +
-  #   ggplot2::geom_point() +
-  #   ggplot2::theme_bw(base_size = 20) +
-  #   ggplot2::theme(legend.position = "top"
-  #                  , strip.text.x = element_text(face = "bold")
-  #                  , legend.title = element_blank()
-  #   )
-  #
 
   get_unique_rows <- function(df, col_name,
                                 export = TRUE,
