@@ -1,25 +1,23 @@
-# Install packages from github
-# devtools::install_github("kwb-r/kwb.utils")
-# devtools::install_github("kwb-r/kwb.fakin")
-# devtools::install_github("kwb-r/kwb.event")
+# Load and install (if needed) R package dependencies
+## 1) Package manager "pacman"
+if (!"pacman" %in% rownames(installed.packages())) {
+  install.packages(pacman, repos = "https://cloud.r-project.org/")
+}
+## 2) R packages from Github
+pkgs_gh <- paste0("KWB-R/" , c("kwb.utils", "kwb.fakin", "kwb.event"))
 
-library(kwb.utils)
+pacman::p_load_gh(char = pkgs_gh)
+
+## 2) R packages from CRAN
 
 # Names of required packages in alphabetical order
-packages <- c(
+pkgs_cran <- c(
   "crayon", "data.table", "devtools", "dplyr", "fs", "readxl", "stringr",
   "testthat", "tidyr", "janitor", "ggplot2"
 )
 
-# Names of installed packages
-installed_packages <- rownames(installed.packages())
+pacman::p_load(char = pkgs_cran)
 
-# Install non-installed packages from CRAN
-missing_packages <- setdiff(packages, installed_packages)
-
-if (length(missing_packages)) {
-  install.packages(missing_packages)
-}
 
 # Define paths to scripts with functions
 script_paths <- file.path("./R", c(
