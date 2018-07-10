@@ -1,3 +1,9 @@
+# get_col ----------------------------------------------------------------------
+get_col <- kwb.utils::selectColumns
+
+# get_ele ----------------------------------------------------------------------
+get_ele <- kwb.utils::selectElements
+
 # delete_empty_columns_right ---------------------------------------------------
 delete_empty_columns_right <- function(x)
 {
