@@ -1,3 +1,41 @@
+# get_sheet_info ---------------------------------------------------------------
+get_sheet_info <- function(tables)
+{
+  kwb.utils::getAttribute(tables, "sheet_info")
+}
+
+# set_sheet_info ---------------------------------------------------------------
+set_sheet_info <- function(tables, sheet_info)
+{
+  structure(tables, sheet_info = sheet_info)
+}
+
+# get_table_info ---------------------------------------------------------------
+get_table_info <- function(tables)
+{
+  kwb.utils::getAttribute(tables, "table_info")
+}
+
+# set_table_info ---------------------------------------------------------------
+set_table_info <- function(tables, table_info)
+{
+  structure(tables, table_info = table_info)
+}
+
+# compact_column_info ----------------------------------------------------------
+compact_column_info <- function(column_info)
+{
+  result <- aggregate(
+    table_id ~ file_id + column_names_old, # + column_type, 
+    data = column_info, 
+    FUN = length
+  )
+  
+  names(result)[ncol(result)] <- "n"
+  
+  kwb.utils::resetRowNames(result[do.call(order, result[, 1:2]), ])
+}
+
 # export_table_metadata --------------------------------------------------------
 
 #' Export Table Metadata
@@ -53,10 +91,8 @@ create_column_metadata <- function(
   tables, table_info = attr(tables, "table_info"), dbg = TRUE
 )
 {
-  if (FALSE) {
-    table_info = attr(tables, "table_info"); dbg = TRUE
-  }
-  
+  # kwb.utils::assignArgumentDefaults("create_column_metadata")
+
   get_col <- kwb.utils::selectColumns
     
   if (is.null(table_info)) {
