@@ -3,14 +3,18 @@ library(testthat)
 # 1. Source main.R first!
 # 2. Source this script
 
+file_database <- to_file_database(files)
+file_database$files
+file_database$folders
+
 # M A I N ----------------------------------------------------------------------
 if (FALSE)
 {
   # Get all tables from one file
-  tables <- get_text_tables_from_xlsx(file = files[2])
+  tables <- get_text_tables_from_xlsx(file = files[1])
 
   # Get table metadata
-  table_info <- kwb.utils::getAttribute(tables, "table_info")
+  table_info <- get_table_info(tables)
   
   # Create column metadata from the table headers
   column_info <- create_column_metadata(tables)
@@ -27,19 +31,25 @@ if (FALSE)
   # import_table_metadata returns NULL if no metadata file exists
   import_table_metadata(files[5])
 
-  # Select all file indices Change indices to test with less files
+  # Select all file indices
   indices <- seq_along(files)
+  indices <- 1:2
+  
+  # Change indices to test with less files
   #indices <- 16
   
   # Clear the screen
   kwb.utils::clearConsole()  
   
   # Get all tables from all files
-  system.time(all_tables <- lapply(files[indices], get_text_tables_from_xlsx))
+  system.time(all_tables <- lapply(indices, function(index) {
+    cat("File index:", index)
+    get_text_tables_from_xlsx(files[index])
+  }))
 
-  #    user  system elapsed 
-  # 118.868   3.316 123.309 
-
+  #   user  system elapsed 
+  # 93.604   2.936  97.305   
+  
   names(all_tables) <- file_database$files$file_id[indices]
   
   # Create column metadata for all tables
@@ -48,6 +58,11 @@ if (FALSE)
   column_info <- rbindAll(
     column_info_list, nameColumn = "file_id", namesAsFactor = FALSE
   )
+  
+  x <- compact_column_info(column_info)
+
+  nrow(x)
+  # 6141
   
   column_info <- suggest_column_name(column_info)
   
@@ -87,10 +102,10 @@ if (FALSE)
   tables <- all_tables[[1]]
   
   # Get a description of the sheets in that file
-  kwb.utils::getAttribute(tables, "sheet_info")
+  get_sheet_info(tables)
   
   # Get a description of tables in that file
-  kwb.utils::getAttribute(tables, "table_info")
+  get_table_info(tables)
 
   # Get the name of the file that was read
   kwb.utils::getAttribute(tables, "file")
