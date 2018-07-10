@@ -1,7 +1,7 @@
 # print_table_summary ----------------------------------------------------------
 print_table_summary <- function(tables)
 {
-  table_info <- kwb.utils::getAttribute(tables, "table_info")
+  table_info <- get_table_info(tables)
   
   file <- kwb.utils::getAttribute(tables, "file")
   
