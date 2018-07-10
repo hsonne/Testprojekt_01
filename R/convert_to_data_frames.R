@@ -7,8 +7,8 @@ convert_text_matrix_list_to_data_frames <- function(
     # file_id <- names(all_tables)[1]
 
     tables <- all_tables[[file_id]]
-
-    table_info <- kwb.utils::getAttribute(tables, "table_info")
+    
+    table_info <- get_table_info(tables)
 
     this_file_column_info <- column_info[column_info$file_id == file_id, ]
 

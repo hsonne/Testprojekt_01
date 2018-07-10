@@ -1,6 +1,8 @@
 # guess_number_of_headers_from_text_matrix -------------------------------------
 guess_number_of_headers_from_text_matrix <- function(
-                                                     x, table_id, method = 2, dbg = TRUE) {
+  x, table_id, guess_max = 100, dbg = TRUE
+)
+{
   if (FALSE) {
     method <- 2
     dbg <- TRUE
@@ -9,6 +11,11 @@ guess_number_of_headers_from_text_matrix <- function(
   debug_formatted(
     dbg, "\nGuessing number of header rows in '%s' ... ", table_id
   )
+  
+  if (! is.null(guess_max)) {
+    
+    x <- x[seq_len(min(guess_max, nrow(x))), , drop = FALSE]
+  }
 
   type_matrix <- get_type_matrix_from_text_matrix(x)
 
@@ -21,28 +28,29 @@ guess_number_of_headers_from_text_matrix <- function(
     debug_formatted(dbg, "No numeric columns. Returning 1.\n")
 
     1L
+    
   } else {
+    
     type_matrix_numeric <- type_matrix[, indices_numeric, drop = FALSE]
 
-    n_headers <- if (method == 1) {
-      n_text_per_col <- colSums(type_matrix_numeric == "T")
+    which_first_numeric <- function(x) which(x == "N")[1]
 
-      n_frequency <- sort(table(n_text_per_col), decreasing = TRUE)
-
-      as.integer(names(n_frequency)[1])
-    } else if (method == 2) {
-      min(sapply(kwb.utils::asColumnList(type_matrix_numeric), function(types) {
-        which(types == "N")[1] - 1
-      }))
-    } else {
-      stop_formatted("Undefined method: %s. Possible values: 1, 2", method)
-    }
+    column_list <- kwb.utils::asColumnList(type_matrix_numeric)
+    
+    n_headers <- min(sapply(column_list, which_first_numeric)) - 1
   }
 
   debug_ok(dbg)
+  
+  # If n_headers is 0, return nontheless 1 in case that the upper left field is 
+  # empty. This is assumed to be a cross table with numeric column headers
+  if (n_headers == 0 && kwb.utils::isNaOrEmpty(x[1, 1])) {
+    
+    n_headers <- 1
+  } 
 
-  # Return at least 1
-  structure(max(1L, n_headers), col_types = col_types)
+  # Return column types in attribute
+  structure(n_headers, col_types = col_types)
 }
 
 # guess_column_type_from_type_matrix -------------------------------------------
