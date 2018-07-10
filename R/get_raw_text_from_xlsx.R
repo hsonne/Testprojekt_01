@@ -3,7 +3,7 @@ get_raw_text_from_xlsx <- function(file, sheet = NULL, dbg = TRUE)
 {
   stopifnot(is.character(file), length(file) == 1)
   
-  # If not sheet name is given, call this function for all sheets in the file
+  # If no sheet name is given, call this function for all sheets in the file
   if (is.null(sheet)) {
  
     # Print the file name and file path to the console
@@ -43,7 +43,7 @@ get_raw_text_from_xlsx <- function(file, sheet = NULL, dbg = TRUE)
     
     mode(result) <- "character"
     
-    result
+    structure(result, file = file, sheet = sheet)
   }
 }
 
