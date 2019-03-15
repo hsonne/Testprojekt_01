@@ -3,7 +3,7 @@ library(testthat)
 # 1. Source main.R first!
 # 2. Source this script
 
-file_database <- to_file_database(files)
+file_database <- kwb.file::to_file_database(files)
 file_database$files
 file_database$folders
 
