@@ -22,15 +22,8 @@ pacman::p_load(char = pkgs_cran)
 # Define paths to scripts with functions
 script_paths <- file.path("./R", c(
   "convert_xls_as_xlsx.R",
-  "convert_to_data_frames.R", "copy_xlsx_files.R",
-  "file_database.R",
-  "get_raw_text_from_xlsx.R",
-  "get_tables_from_xlsx.R",
-  "guess.R",
-  "metadata.R",
-  "print_table_summary.R",
+  "copy_xlsx_files.R",
   "read_bwb_data.R",
-  "utils.R",
   "add_lookup_data.R",
   "get_foerdermengen.R",
   "copy_lookup_para_file.R"
