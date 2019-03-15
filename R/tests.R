@@ -94,7 +94,7 @@ if (FALSE) {
 
   # Write a summary of the read structure to the log file
   capture.output(file = logfile_summary, {
-    for (tables in all_tables) print_table_summary(tables)
+    for (tables in all_tables) kwb.readxl:::print_table_summary(tables)
   })
 
   # Let's have a look at the tables in one Excel file only
