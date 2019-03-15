@@ -61,6 +61,7 @@ paths <- list(
 
 paths <- kwb.utils::resolve(paths, root = "root_server")
 # paths <- kwb.utils::resolve(paths, root = "C:/projects")
+paths <- kwb.utils::resolve(paths, root = "~/Downloads/Unterstuetzung/Michael/03_ANALYSIS_R")
 
 
 
