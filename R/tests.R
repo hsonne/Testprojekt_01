@@ -82,7 +82,7 @@ if (FALSE) {
   #column_info <- read_column_info(safePath(base_dir, "METADATA_columns.csv"))
 
   # Use column info to convert the text tables into data frames
-  all_data <- convert_text_matrix_list_to_data_frames(all_tables, column_info)
+  all_data <- kwb.readxl:::convert_text_matrix_list_to_data_frames(all_tables, column_info)
   
   lapply(all_data, function(all_tables) lapply(all_tables, head))
     
