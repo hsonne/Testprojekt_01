@@ -16,19 +16,19 @@ if (FALSE) {
   table_info <- get_table_info(tables)
   
   # Create column metadata from the table headers
-  column_info <- create_column_metadata(tables)
+  column_info <- kwb.readxl:::create_column_metadata(tables)
 
   # Add column "skip": If the user puts an "x" into this column, the
   # corresponding table will not be imported.
   table_info$skip <- ""
 
   # Write table metadata to "<basename>_META.csv"
-  export_table_metadata(
+  kwb.readxl:::export_table_metadata(
     structure(table_info, file = kwb.utils::getAttribute(tables, "file"))
   )
   
   # import_table_metadata returns NULL if no metadata file exists
-  import_table_metadata(files[5])
+  kwb.readxl:::import_table_metadata(files[5])
 
   # Select all file indices
   indices <- seq_along(files)
@@ -52,19 +52,19 @@ if (FALSE) {
   names(all_tables) <- file_database$files$file_id[indices]
   
   # Create column metadata for all tables
-  column_info_list <- lapply(all_tables, create_column_metadata)
+  column_info_list <- lapply(all_tables, kwb.readxl:::create_column_metadata)
 
   column_info <- rbindAll(
     column_info_list,
     nameColumn = "file_id", namesAsFactor = FALSE
   )
   
-  x <- compact_column_info(column_info)
+  x <- kwb.readxl:::compact_column_info(column_info)
 
   nrow(x)
   # 6141
   
-  column_info <- suggest_column_name(column_info)
+  column_info <- kwb.readxl:::suggest_column_name(column_info)
   
   column_info <- merge(column_info, file_database$files)
   
@@ -101,7 +101,7 @@ if (FALSE) {
   tables <- all_tables[[1]]
 
   # Get a description of the sheets in that file
-  get_sheet_info(tables)
+  kwb.readxl:::get_sheet_info(tables)
   
   # Get a description of tables in that file
   get_table_info(tables)
