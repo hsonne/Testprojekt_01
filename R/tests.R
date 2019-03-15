@@ -116,7 +116,7 @@ if (FALSE) {
 
   # Try to guess the header rows for each table...
   n_headers <- sapply(names(tables), function(table_id) {
-    guess_number_of_headers_from_text_matrix(
+    kwb.readxl:::guess_number_of_headers_from_text_matrix(
       tables[[table_id]],
       table_id = table_id
     )
